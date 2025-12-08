@@ -73,7 +73,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
-                <Button size="lg" className="w-full sm:w-auto bg-white text-wine-700 hover:bg-wine-50">
+                <Button size="lg" className="w-full sm:w-auto !bg-white !text-wine-800 hover:!bg-gray-100 font-semibold shadow-lg">
                   Get Started Free
                 </Button>
               </Link>
@@ -81,7 +81,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto border-white text-white hover:bg-white/10"
+                  className="w-full sm:w-auto !border-2 !border-white !text-white hover:!bg-white/10 font-semibold"
                 >
                   Sign In
                 </Button>

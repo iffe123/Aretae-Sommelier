@@ -26,6 +26,9 @@ export async function uploadWinePhoto(
   userId: string,
   file: File
 ): Promise<string> {
+  if (!storage) {
+    throw new Error("Firebase storage is not initialized");
+  }
   const fileExtension = file.name.split(".").pop();
   const fileName = `${userId}/${Date.now()}.${fileExtension}`;
   const storageRef = ref(storage, `wine-photos/${fileName}`);
@@ -35,6 +38,9 @@ export async function uploadWinePhoto(
 }
 
 export async function deleteWinePhoto(photoUrl: string): Promise<void> {
+  if (!storage) {
+    throw new Error("Firebase storage is not initialized");
+  }
   try {
     const storageRef = ref(storage, photoUrl);
     await deleteObject(storageRef);
@@ -47,6 +53,9 @@ export async function addWine(
   userId: string,
   data: WineFormData
 ): Promise<string> {
+  if (!db) {
+    throw new Error("Firebase Firestore is not initialized");
+  }
   let photoUrl: string | undefined;
 
   if (data.photo) {
@@ -81,6 +90,9 @@ export async function updateWine(
   data: Partial<WineFormData>,
   existingPhotoUrl?: string
 ): Promise<void> {
+  if (!db) {
+    throw new Error("Firebase Firestore is not initialized");
+  }
   let photoUrl = existingPhotoUrl;
 
   if (data.photo) {
@@ -108,6 +120,9 @@ export async function updateWine(
 }
 
 export async function deleteWine(wineId: string): Promise<void> {
+  if (!db) {
+    throw new Error("Firebase Firestore is not initialized");
+  }
   const wine = await getWine(wineId);
   if (wine?.photoUrl) {
     await deleteWinePhoto(wine.photoUrl);
@@ -116,6 +131,9 @@ export async function deleteWine(wineId: string): Promise<void> {
 }
 
 export async function getWine(wineId: string): Promise<Wine | null> {
+  if (!db) {
+    throw new Error("Firebase Firestore is not initialized");
+  }
   const docSnap = await getDoc(doc(db, WINES_COLLECTION, wineId));
   if (!docSnap.exists()) return null;
 
@@ -132,6 +150,9 @@ export async function getUserWines(
   userId: string,
   filters?: WineFilterOptions
 ): Promise<Wine[]> {
+  if (!db) {
+    throw new Error("Firebase Firestore is not initialized");
+  }
   let q = query(
     collection(db, WINES_COLLECTION),
     where("userId", "==", userId)

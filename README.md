@@ -109,6 +109,22 @@ NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
    - Scroll to "Your apps" and click the web icon (</>)
    - Copy the config values to your `.env.local`
 
+6. **Create required Firestore indexes**:
+
+   The app requires a composite index for querying wines by user and sorting by date. When you first run the app, you may see an error like:
+   ```
+   The query requires an index. You can create it here: [URL]
+   ```
+
+   Click the URL in the error message to automatically create the index, or manually create it:
+   - Go to Firestore Database > Indexes
+   - Click "Add Index"
+   - Collection ID: `wines`
+   - Fields to index:
+     - `userId` (Ascending)
+     - `createdAt` (Descending)
+   - Query scope: Collection
+
 ### Gemini API Setup
 
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)

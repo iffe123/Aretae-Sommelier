@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">
+  <g fill="currentColor" fill-opacity="0.4">
+    <!-- Wine glass -->
+    <path d="M30 5 L35 20 Q35 25 30 28 Q25 25 25 20 L30 5Z"/>
+    <rect x="29" y="28" width="2" height="8"/>
+    <rect x="26" y="36" width="8" height="2" rx="1"/>
+    <!-- Grape cluster -->
+    <circle cx="12" cy="48" r="4"/>
+    <circle cx="18" cy="45" r="4"/>
+    <circle cx="15" cy="52" r="4"/>
+    <circle cx="21" cy="51" r="3"/>
+    <path d="M15 40 Q18 38 21 40" stroke="currentColor" stroke-width="1" fill="none"/>
+    <!-- Wine bottle silhouette -->
+    <path d="M48 55 L48 35 Q48 30 50 28 L50 20 Q50 18 48 18 L52 18 Q50 18 50 20 L50 28 Q52 30 52 35 L52 55 Q52 57 50 57 Q48 57 48 55Z"/>
+  </g>
+</svg>

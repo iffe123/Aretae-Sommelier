@@ -62,7 +62,7 @@ export async function addWine(
     region: data.region,
     country: data.country,
     price: data.price,
-    photoUrl,
+    photoUrl: photoUrl || '',
     rating: data.rating,
     tastingNotes: data.tastingNotes,
     bottlesOwned: data.bottlesOwned,

@@ -37,14 +37,33 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      console.error("GEMINI_API_KEY is not configured");
+      console.error("GEMINI_API_KEY is not configured in environment variables");
       return NextResponse.json(
-        { error: "Sommelier service is not configured" },
+        { error: "Sommelier service is not configured. Please set GEMINI_API_KEY environment variable." },
         { status: 500 }
       );
     }
 
-    const { message, wineContext, conversationHistory } = await request.json();
+    // Validate API key format (should be a non-empty string)
+    if (typeof apiKey !== 'string' || apiKey.trim().length === 0 || apiKey === 'your_gemini_api_key_here') {
+      console.error("GEMINI_API_KEY appears to be invalid or placeholder value");
+      return NextResponse.json(
+        { error: "Sommelier service is misconfigured. Please check your GEMINI_API_KEY." },
+        { status: 500 }
+      );
+    }
+
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
+
+    const { message, wineContext, conversationHistory } = requestBody;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -100,10 +119,36 @@ Consider this wine when answering their question.`;
     const text = response.text();
 
     return NextResponse.json({ response: text });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Chat API error:", error);
+
+    // Provide more specific error messages based on the error type
+    const errorObj = error as { message?: string; status?: number; statusText?: string };
+
+    // Check for common Gemini API errors
+    if (errorObj.message?.includes('API key')) {
+      return NextResponse.json(
+        { error: "Invalid Gemini API key. Please check your GEMINI_API_KEY configuration." },
+        { status: 401 }
+      );
+    }
+
+    if (errorObj.message?.includes('quota') || errorObj.message?.includes('rate')) {
+      return NextResponse.json(
+        { error: "API rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    if (errorObj.message?.includes('model') || errorObj.message?.includes('not found')) {
+      return NextResponse.json(
+        { error: "AI model unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to get response from sommelier" },
+      { error: "Failed to get response from sommelier. Please try again." },
       { status: 500 }
     );
   }

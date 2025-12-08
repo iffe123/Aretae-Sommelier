@@ -83,8 +83,8 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
-# Gemini AI Configuration
-NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+# Gemini AI Configuration (server-side only for security)
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ### Firebase Setup
@@ -129,7 +129,7 @@ NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
 
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
-3. Add it to your `.env.local` as `NEXT_PUBLIC_GEMINI_API_KEY`
+3. Add it to your `.env.local` as `GEMINI_API_KEY` (without `NEXT_PUBLIC_` prefix for security - API keys should never be exposed client-side)
 
 ## Deployment
 

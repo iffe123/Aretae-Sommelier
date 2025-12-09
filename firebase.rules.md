@@ -1,7 +1,12 @@
 # Firebase Security Rules
 
-This document contains the recommended security rules for Firestore and Firebase Storage.
-Copy these rules to your Firebase Console.
+This document contains the security rules for Firestore and Firebase Storage.
+
+**Rules Files:**
+- `firestore.rules` - Firestore Database security rules
+- `storage.rules` - Firebase Storage security rules
+
+Copy these rules to your Firebase Console or deploy using Firebase CLI.
 
 ## Firestore Rules
 
@@ -83,6 +88,7 @@ service firebase.storage {
 - [x] User input is validated before submission
 - [x] File uploads are validated for type and size
 - [x] Photo URLs are extracted safely from Firebase Storage URLs
-- [ ] Apply Firestore security rules (manual step)
-- [ ] Apply Storage security rules (manual step)
+- [x] Security rules files created (`firestore.rules`, `storage.rules`)
+- [ ] Apply Firestore security rules in Firebase Console (manual step)
+- [ ] Apply Storage security rules in Firebase Console (manual step)
 - [ ] Enable App Check for additional protection (optional)

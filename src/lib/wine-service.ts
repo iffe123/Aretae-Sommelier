@@ -41,10 +41,26 @@ export async function deleteWinePhoto(photoUrl: string): Promise<void> {
   if (!storage) {
     throw new Error("Firebase storage is not initialized");
   }
+  if (!photoUrl) {
+    return; // No photo to delete
+  }
   try {
-    const storageRef = ref(storage, photoUrl);
+    // Extract the storage path from the full Firebase Storage URL
+    // URL format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?token=...
+    // The path is URL-encoded, so we need to decode it
+    let storagePath = photoUrl;
+
+    if (photoUrl.includes('firebasestorage.googleapis.com')) {
+      const match = photoUrl.match(/\/o\/(.+?)\?/);
+      if (match) {
+        storagePath = decodeURIComponent(match[1]);
+      }
+    }
+
+    const storageRef = ref(storage, storagePath);
     await deleteObject(storageRef);
   } catch (error) {
+    // Log error but don't throw - photo deletion failure shouldn't block wine deletion
     console.error("Error deleting photo:", error);
   }
 }
@@ -62,21 +78,22 @@ export async function addWine(
     photoUrl = await uploadWinePhoto(userId, data.photo);
   }
 
+  // Sanitize all fields to prevent undefined values in Firestore
   const wineData = {
     userId,
-    name: data.name,
-    winery: data.winery,
-    vintage: data.vintage,
-    grapeVariety: data.grapeVariety,
-    region: data.region,
-    country: data.country,
-    price: data.price,
-    photoUrl: photoUrl || '',
-    rating: data.rating,
-    tastingNotes: data.tastingNotes,
-    bottlesOwned: data.bottlesOwned,
-    storageLocation: data.storageLocation,
-    isWishlist: data.isWishlist,
+    name: data.name || '',
+    winery: data.winery || '',
+    vintage: data.vintage || null,
+    grapeVariety: data.grapeVariety || '',
+    region: data.region || '',
+    country: data.country || '',
+    price: data.price || 0,
+    photoUrl: photoUrl || '',  // Never undefined!
+    rating: data.rating || 0,
+    tastingNotes: data.tastingNotes || '',
+    bottlesOwned: data.bottlesOwned || 0,
+    storageLocation: data.storageLocation || '',
+    isWishlist: data.isWishlist || false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   };

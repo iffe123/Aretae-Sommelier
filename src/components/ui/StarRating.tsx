@@ -24,14 +24,21 @@ export default function StarRating({
   };
 
   return (
-    <div className="flex gap-1">
+    <div
+      className="flex gap-1"
+      role={readonly ? "img" : "radiogroup"}
+      aria-label={readonly ? `Rating: ${rating} out of ${maxRating} stars` : "Rate this wine"}
+    >
       {Array.from({ length: maxRating }, (_, i) => i + 1).map((star) => (
         <button
           key={star}
           type="button"
           onClick={() => !readonly && onChange?.(star)}
           disabled={readonly}
-          className={`${readonly ? "cursor-default" : "cursor-pointer hover:scale-110"} transition-transform`}
+          aria-label={`${star} star${star !== 1 ? "s" : ""}`}
+          aria-pressed={!readonly ? star <= rating : undefined}
+          tabIndex={readonly ? -1 : 0}
+          className={`${readonly ? "cursor-default" : "cursor-pointer hover:scale-110 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-1 rounded"} transition-transform`}
         >
           <Star
             className={`${sizes[size]} ${
@@ -39,6 +46,7 @@ export default function StarRating({
                 ? "fill-amber-400 text-amber-400"
                 : "fill-transparent text-gray-300"
             }`}
+            aria-hidden="true"
           />
         </button>
       ))}

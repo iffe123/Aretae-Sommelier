@@ -20,6 +20,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Add headers to fix Cross-Origin-Opener-Policy warnings during Google sign-in
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

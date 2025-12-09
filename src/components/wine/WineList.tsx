@@ -2,21 +2,25 @@
 
 import { Wine } from "@/types/wine";
 import WineCard from "./WineCard";
-import { Wine as WineIcon, Plus } from "lucide-react";
+import { Wine as WineIcon, Plus, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface WineListProps {
   wines: Wine[];
   loading?: boolean;
   emptyMessage?: string;
+  isFilterActive?: boolean;
   onAddWine?: () => void;
+  onClearFilters?: () => void;
 }
 
 export default function WineList({
   wines,
   loading,
   emptyMessage = "No wines found",
+  isFilterActive = false,
   onAddWine,
+  onClearFilters,
 }: WineListProps) {
   if (loading) {
     return (
@@ -39,6 +43,28 @@ export default function WineList({
   }
 
   if (wines.length === 0) {
+    // Different empty states based on context
+    if (isFilterActive) {
+      return (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+            <Search className="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No wines match your search
+          </h3>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            Try adjusting your filters or search terms to find what you're looking for.
+          </p>
+          {onClearFilters && (
+            <Button variant="outline" onClick={onClearFilters}>
+              Clear All Filters
+            </Button>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="text-center py-16">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-wine-100 rounded-full mb-4">

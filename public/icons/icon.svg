@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="wineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B2252;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#722F37;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#wineGrad)"/>
+  <!-- Wine glass -->
+  <g fill="#fff">
+    <!-- Glass bowl -->
+    <path d="M256 80 L320 200 C330 240 310 280 256 300 C202 280 182 240 192 200 L256 80Z" fill="#fff" fill-opacity="0.95"/>
+    <!-- Wine in glass -->
+    <path d="M220 180 L292 180 C298 220 285 250 256 265 C227 250 214 220 220 180Z" fill="#4a1020"/>
+    <!-- Stem -->
+    <rect x="248" y="300" width="16" height="100" fill="#fff" fill-opacity="0.95"/>
+    <!-- Base -->
+    <ellipse cx="256" cy="410" rx="60" ry="12" fill="#fff" fill-opacity="0.95"/>
+  </g>
+</svg>

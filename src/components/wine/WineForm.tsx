@@ -6,8 +6,10 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
 import StarRating from "@/components/ui/StarRating";
-import { Camera, X, Loader2 } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle } from "lucide-react";
 import Image from "next/image";
+import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
+import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
 
 interface WineLabelData {
   name: string | null;
@@ -28,6 +30,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<WineFormErrors>({});
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialData?.photoUrl || null
   );
@@ -97,8 +102,23 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file before processing
+      setPhotoError(null);
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        setPhotoError(validation.error || 'Invalid file');
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       setFormData({ ...formData, photo: file });
       const reader = new FileReader();
+      reader.onerror = () => {
+        setPhotoError('Failed to read file. Please try again.');
+      };
       reader.onloadend = () => {
         const base64Result = reader.result as string;
         setPhotoPreview(base64Result);
@@ -114,6 +134,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
   const handleRemovePhoto = () => {
     setFormData({ ...formData, photo: undefined });
     setPhotoPreview(null);
+    setPhotoError(null);
+    setAnalysisError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -121,9 +143,33 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+    setValidationErrors({});
+
+    // Validate form data
+    const validation = validateWineForm(formData);
+    if (!validation.valid) {
+      setValidationErrors(validation.errors);
+      setSubmitError('Please fix the errors above before submitting.');
+      return;
+    }
+
     setLoading(true);
     try {
       await onSubmit(formData);
+    } catch (error) {
+      console.error("Error submitting wine:", error);
+      // Use storage error message if it looks like a storage error
+      const errorCode = (error as { code?: string })?.code || '';
+      if (errorCode.startsWith('storage/')) {
+        setSubmitError(getStorageErrorMessage(error));
+      } else {
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to save wine. Please try again.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -131,10 +177,19 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Submit Error */}
+      {submitError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700">{submitError}</p>
+        </div>
+      )}
+
       {/* Photo Upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Wine Label Photo
+          <span className="text-gray-400 font-normal ml-1">(max {formatFileSize(MAX_FILE_SIZE)})</span>
         </label>
         <div className="relative">
           {photoPreview ? (
@@ -183,8 +238,15 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             disabled={analyzing}
           />
         </div>
+        {/* Photo error message */}
+        {photoError && (
+          <p className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {photoError}
+          </p>
+        )}
         {/* Analysis error message */}
-        {analysisError && (
+        {analysisError && !photoError && (
           <p className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
             {analysisError}
           </p>
@@ -200,6 +262,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Château Margaux"
+            maxLength={LIMITS.name}
+            error={validationErrors.name}
             required
           />
         </div>
@@ -211,6 +275,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             value={formData.winery}
             onChange={(e) => setFormData({ ...formData, winery: e.target.value })}
             placeholder="e.g., Château Margaux"
+            maxLength={LIMITS.winery}
+            error={validationErrors.winery}
             required
           />
         </div>
@@ -223,8 +289,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           max={new Date().getFullYear()}
           value={formData.vintage}
           onChange={(e) =>
-            setFormData({ ...formData, vintage: parseInt(e.target.value) })
+            setFormData({ ...formData, vintage: parseInt(e.target.value) || 0 })
           }
+          error={validationErrors.vintage}
           required
         />
 
@@ -236,6 +303,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             setFormData({ ...formData, grapeVariety: e.target.value })
           }
           placeholder="e.g., Cabernet Sauvignon"
+          maxLength={LIMITS.grapeVariety}
+          error={validationErrors.grapeVariety}
           required
         />
       </div>
@@ -248,6 +317,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           value={formData.region}
           onChange={(e) => setFormData({ ...formData, region: e.target.value })}
           placeholder="e.g., Bordeaux"
+          maxLength={LIMITS.region}
+          error={validationErrors.region}
           required
         />
 
@@ -257,6 +328,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           value={formData.country}
           onChange={(e) => setFormData({ ...formData, country: e.target.value })}
           placeholder="e.g., France"
+          maxLength={LIMITS.country}
+          error={validationErrors.country}
           required
         />
       </div>
@@ -271,8 +344,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           step={0.01}
           value={formData.price}
           onChange={(e) =>
-            setFormData({ ...formData, price: parseFloat(e.target.value) })
+            setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
           }
+          error={validationErrors.price}
           required
         />
 
@@ -283,8 +357,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           min={0}
           value={formData.bottlesOwned}
           onChange={(e) =>
-            setFormData({ ...formData, bottlesOwned: parseInt(e.target.value) })
+            setFormData({ ...formData, bottlesOwned: parseInt(e.target.value) || 0 })
           }
+          error={validationErrors.bottlesOwned}
         />
       </div>
 
@@ -296,6 +371,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           setFormData({ ...formData, storageLocation: e.target.value })
         }
         placeholder="e.g., Wine fridge, Rack A3"
+        maxLength={LIMITS.storageLocation}
+        error={validationErrors.storageLocation}
       />
 
       {/* Wishlist Toggle */}
@@ -329,13 +406,15 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
       {/* Tasting Notes */}
       <TextArea
         id="tastingNotes"
-        label="Tasting Notes"
+        label={`Tasting Notes (${formData.tastingNotes?.length || 0}/${LIMITS.tastingNotes})`}
         value={formData.tastingNotes}
         onChange={(e) =>
           setFormData({ ...formData, tastingNotes: e.target.value })
         }
         placeholder="Describe the aroma, flavor, body, finish..."
         rows={4}
+        maxLength={LIMITS.tastingNotes}
+        error={validationErrors.tastingNotes}
       />
 
       {/* Actions */}

@@ -4,7 +4,7 @@ import { WineFilterOptions } from "@/types/wine";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface WineFiltersProps {
   filters: WineFilterOptions;
@@ -12,6 +12,23 @@ interface WineFiltersProps {
   grapeVarieties?: string[];
   countries?: string[];
   regions?: string[];
+}
+
+// Custom hook for debouncing
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 export default function WineFilters({
@@ -22,10 +39,23 @@ export default function WineFilters({
   regions = [],
 }: WineFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [searchInput, setSearchInput] = useState(filters.search || "");
+  const debouncedSearch = useDebounce(searchInput, 300);
+  const isFirstRender = useRef(true);
 
-  const updateFilter = (key: keyof WineFilterOptions, value: unknown) => {
+  // Update filters when debounced search changes
+  useEffect(() => {
+    // Skip the first render to avoid triggering on mount
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onFilterChange({ ...filters, search: debouncedSearch || undefined });
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateFilter = useCallback((key: keyof WineFilterOptions, value: unknown) => {
     onFilterChange({ ...filters, [key]: value || undefined });
-  };
+  }, [filters, onFilterChange]);
 
   const clearFilters = () => {
     onFilterChange({ search: filters.search });
@@ -45,14 +75,14 @@ export default function WineFilters({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <Input
           id="search"
-          value={filters.search || ""}
-          onChange={(e) => updateFilter("search", e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search wines..."
           className="pl-10 pr-10"
         />
-        {filters.search && (
+        {searchInput && (
           <button
-            onClick={() => updateFilter("search", "")}
+            onClick={() => setSearchInput("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
           >
             <X className="w-4 h-4 text-gray-400" />

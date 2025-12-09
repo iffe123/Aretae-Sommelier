@@ -9,9 +9,11 @@ import WineList from "@/components/wine/WineList";
 import WineFilters from "@/components/wine/WineFilters";
 import WineForm from "@/components/wine/WineForm";
 import Modal from "@/components/ui/Modal";
-import Button from "@/components/ui/Button";
 import SommelierChat from "@/components/chat/SommelierChat";
+import { ToastContainer, useToast } from "@/components/ui/Toast";
+import NetworkStatus from "@/components/ui/NetworkStatus";
 import { addWine } from "@/lib/wine-service";
+import { getFirestoreErrorMessage } from "@/lib/error-utils";
 import {
   Wine as WineIcon,
   Plus,
@@ -25,6 +27,7 @@ import Link from "next/link";
 export default function CellarPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const { toasts, removeToast, showError, showSuccess } = useToast();
 
   const [wines, setWines] = useState<Wine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,10 +47,11 @@ export default function CellarPage() {
       setWines(data);
     } catch (error) {
       console.error("Error loading wines:", error);
+      showError(getFirestoreErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [user, filters]);
+  }, [user, filters, showError]);
 
   const loadFilterOptions = useCallback(async () => {
     if (!user) return;
@@ -62,6 +66,7 @@ export default function CellarPage() {
       setRegions(rgns);
     } catch (error) {
       console.error("Error loading filter options:", error);
+      // Don't show toast for filter loading errors - not critical
     }
   }, [user]);
 
@@ -80,14 +85,12 @@ export default function CellarPage() {
 
   const handleAddWine = async (data: Parameters<typeof addWine>[1]) => {
     if (!user) return;
-    try {
-      await addWine(user.uid, data);
-      setShowAddModal(false);
-      loadWines();
-      loadFilterOptions();
-    } catch (error) {
-      console.error("Error adding wine:", error);
-    }
+    // Note: errors are handled in the form, just re-throw for form display
+    await addWine(user.uid, data);
+    setShowAddModal(false);
+    showSuccess("Wine added to your cellar!");
+    loadWines();
+    loadFilterOptions();
   };
 
   if (authLoading) {
@@ -106,6 +109,9 @@ export default function CellarPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Network Status Banner */}
+      <NetworkStatus />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -125,21 +131,25 @@ export default function CellarPage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/stats"
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="View Stats"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wine-500"
+                aria-label="View collection statistics"
               >
-                <BarChart3 className="w-5 h-5 text-gray-600" />
+                <BarChart3 className="w-5 h-5 text-gray-600" aria-hidden="true" />
               </Link>
               <button
                 onClick={() => setShowChat(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Ask Sommelier"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wine-500"
+                aria-label="Open AI Sommelier chat"
               >
-                <MessageCircle className="w-5 h-5 text-gray-600" />
+                <MessageCircle className="w-5 h-5 text-gray-600" aria-hidden="true" />
               </button>
               <div className="relative group">
-                <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <User className="w-5 h-5 text-gray-600" />
+                <button
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wine-500"
+                  aria-label="User menu"
+                  aria-haspopup="true"
+                >
+                  <User className="w-5 h-5 text-gray-600" aria-hidden="true" />
                 </button>
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <div className="p-3 border-b">
@@ -179,21 +189,20 @@ export default function CellarPage() {
         <WineList
           wines={wines}
           loading={loading}
-          emptyMessage={
-            filters.search || filters.grapeVariety || filters.country
-              ? "No wines match your filters"
-              : "Your cellar is empty"
-          }
+          emptyMessage="Your cellar is empty"
+          isFilterActive={!!(filters.search || filters.grapeVariety || filters.country || filters.region)}
           onAddWine={() => setShowAddModal(true)}
+          onClearFilters={() => setFilters({})}
         />
       </main>
 
       {/* FAB - Add Wine */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-wine-600 hover:bg-wine-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-30"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-wine-600 hover:bg-wine-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2"
+        aria-label="Add new wine"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6" aria-hidden="true" />
       </button>
 
       {/* Add Wine Modal */}
@@ -212,6 +221,9 @@ export default function CellarPage() {
 
       {/* Sommelier Chat */}
       <SommelierChat isOpen={showChat} onClose={() => setShowChat(false)} />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

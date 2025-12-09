@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Wine } from "lucide-react";
+import { getAuthErrorMessage } from "@/lib/error-utils";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -34,8 +35,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       }
       router.push("/cellar");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -49,8 +49,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       await signInWithGoogle();
       router.push("/cellar");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }

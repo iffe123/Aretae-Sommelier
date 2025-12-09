@@ -6,8 +6,17 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
 import StarRating from "@/components/ui/StarRating";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Loader2 } from "lucide-react";
 import Image from "next/image";
+
+interface WineLabelData {
+  name: string | null;
+  winery: string | null;
+  vintage: number | null;
+  grapeVariety: string | null;
+  region: string | null;
+  country: string | null;
+}
 
 interface WineFormProps {
   initialData?: Wine;
@@ -17,6 +26,8 @@ interface WineFormProps {
 
 export default function WineForm({ initialData, onSubmit, onCancel }: WineFormProps) {
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialData?.photoUrl || null
   );
@@ -37,13 +48,64 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     isWishlist: initialData?.isWishlist || false,
   });
 
+  const analyzeWineLabel = async (imageBase64: string, mimeType: string) => {
+    setAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const response = await fetch("/api/analyze-wine", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageBase64,
+          mimeType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to analyze wine label");
+      }
+
+      const wineData: WineLabelData = data.data;
+
+      // Auto-fill form fields with extracted data
+      setFormData((prev) => ({
+        ...prev,
+        name: wineData.name || prev.name,
+        winery: wineData.winery || prev.winery,
+        vintage: wineData.vintage || prev.vintage,
+        grapeVariety: wineData.grapeVariety || prev.grapeVariety,
+        region: wineData.region || prev.region,
+        country: wineData.country || prev.country,
+      }));
+    } catch (error) {
+      console.error("Wine label analysis error:", error);
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : "Couldn't read label - please fill in details manually"
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFormData({ ...formData, photo: file });
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
+        const base64Result = reader.result as string;
+        setPhotoPreview(base64Result);
+
+        // Analyze the wine label with Gemini Vision
+        const mimeType = file.type || "image/jpeg";
+        analyzeWineLabel(base64Result, mimeType);
       };
       reader.readAsDataURL(file);
     }
@@ -83,13 +145,22 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                 fill
                 className="object-cover"
               />
-              <button
-                type="button"
-                onClick={handleRemovePhoto}
-                className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md hover:bg-gray-100"
-              >
-                <X className="w-4 h-4 text-gray-600" />
-              </button>
+              {/* Analyzing overlay */}
+              {analyzing && (
+                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
+                  <span className="text-white text-sm font-medium">Analyzing label...</span>
+                </div>
+              )}
+              {!analyzing && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 text-gray-600" />
+                </button>
+              )}
             </div>
           ) : (
             <button
@@ -99,16 +170,25 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             >
               <Camera className="w-8 h-8 text-gray-400 mb-2" />
               <span className="text-sm text-gray-500">Add photo</span>
+              <span className="text-xs text-gray-400 mt-1">AI will auto-fill details</span>
             </button>
           )}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            capture="environment"
             onChange={handlePhotoChange}
             className="hidden"
+            disabled={analyzing}
           />
         </div>
+        {/* Analysis error message */}
+        {analysisError && (
+          <p className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+            {analysisError}
+          </p>
+        )}
       </div>
 
       {/* Basic Info */}
@@ -260,10 +340,10 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
       {/* Actions */}
       <div className="flex gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={analyzing}>
           Cancel
         </Button>
-        <Button type="submit" isLoading={loading} className="flex-1">
+        <Button type="submit" isLoading={loading} className="flex-1" disabled={analyzing}>
           {initialData ? "Save Changes" : "Add Wine"}
         </Button>
       </div>

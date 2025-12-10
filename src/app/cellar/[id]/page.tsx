@@ -16,7 +16,7 @@ interface WineDetailPageProps {
 
 export default function WineDetailPage({ params }: WineDetailPageProps) {
   const resolvedParams = use(params);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, checkingRedirect } = useAuth();
   const router = useRouter();
 
   const [wine, setWine] = useState<Wine | null>(null);
@@ -24,10 +24,11 @@ export default function WineDetailPage({ params }: WineDetailPageProps) {
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Wait for BOTH auth loading AND redirect check to complete
+    if (!authLoading && !checkingRedirect && !user) {
       router.push("/signin");
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, checkingRedirect, router]);
 
   useEffect(() => {
     async function loadWine() {
@@ -64,7 +65,7 @@ export default function WineDetailPage({ params }: WineDetailPageProps) {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || checkingRedirect || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wine-50">
         <div className="animate-pulse">

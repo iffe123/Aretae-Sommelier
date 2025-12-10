@@ -25,17 +25,18 @@ import {
 import Link from "next/link";
 
 export default function StatsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, checkingRedirect } = useAuth();
   const router = useRouter();
 
   const [wines, setWines] = useState<Wine[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Wait for BOTH auth loading AND redirect check to complete
+    if (!authLoading && !checkingRedirect && !user) {
       router.push("/signin");
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, checkingRedirect, router]);
 
   useEffect(() => {
     async function loadWines() {
@@ -107,7 +108,7 @@ export default function StatsPage() {
     return rating.toFixed(1);
   };
 
-  if (authLoading) {
+  if (authLoading || checkingRedirect) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wine-50">
         <div className="animate-pulse">

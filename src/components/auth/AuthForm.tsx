@@ -20,9 +20,31 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isOAuthRedirectPending, setIsOAuthRedirectPending] = useState(false);
 
-  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading: authLoading, checkingRedirect, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const router = useRouter();
+
+  // Check if we're returning from an OAuth redirect on mount
+  useEffect(() => {
+    if (typeof sessionStorage !== "undefined") {
+      const pending = sessionStorage.getItem("oauth_redirect_pending");
+      if (pending === "true") {
+        setIsOAuthRedirectPending(true);
+      }
+    }
+  }, []);
+
+  // Clear OAuth redirect pending state when redirect check completes
+  useEffect(() => {
+    if (!checkingRedirect && isOAuthRedirectPending) {
+      // Redirect check is done, clear the pending state
+      setIsOAuthRedirectPending(false);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem("oauth_redirect_pending");
+      }
+    }
+  }, [checkingRedirect, isOAuthRedirectPending]);
 
   // Check for authenticated user after OAuth redirect and redirect to cellar
   useEffect(() => {
@@ -90,12 +112,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
   };
 
   // Show loading state while checking authentication to prevent form flash
-  if (authLoading) {
+  // Also show loading when returning from OAuth redirect
+  if (authLoading || isOAuthRedirectPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-wine-600 animate-spin" />
-          <p className="text-gray-600">Checking authentication...</p>
+          <p className="text-gray-600">
+            {isOAuthRedirectPending ? "Completing sign in..." : "Checking authentication..."}
+          </p>
         </div>
       </div>
     );

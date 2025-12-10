@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { WifiOff } from "lucide-react";
 
 export default function NetworkStatus() {
-  const [isOnline, setIsOnline] = useState(true);
-  const [showBanner, setShowBanner] = useState(false);
+  // Initialize with a function to read navigator.onLine only on client-side
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+  const [showBanner, setShowBanner] = useState(() =>
+    typeof navigator !== "undefined" ? !navigator.onLine : false
+  );
 
   useEffect(() => {
-    // Set initial state
-    setIsOnline(navigator.onLine);
-
     const handleOnline = () => {
       setIsOnline(true);
       // Show "back online" message briefly
@@ -24,11 +26,6 @@ export default function NetworkStatus() {
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
-    // Show banner initially if offline
-    if (!navigator.onLine) {
-      setShowBanner(true);
-    }
 
     return () => {
       window.removeEventListener("online", handleOnline);

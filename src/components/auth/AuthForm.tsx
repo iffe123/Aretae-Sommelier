@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
@@ -18,8 +18,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
+
+  // Redirect to cellar if user is already authenticated (handles redirect flow)
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/cellar");
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +62,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setLoading(false);
     }
   };
+
+  // Show loading while checking auth state (prevents form flash on redirect)
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100">
+        <div className="animate-pulse">
+          <Wine className="w-12 h-12 text-wine-400" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">

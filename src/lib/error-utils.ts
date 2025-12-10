@@ -1,26 +1,49 @@
 // Utility functions for user-friendly error handling
 
 /**
- * Converts Firebase Auth error codes to user-friendly messages
+ * Converts Firebase Auth error codes to user-friendly messages.
+ *
+ * DEBUGGING TIP: If users report sign-in issues:
+ * 1. Go to Firebase Console → Authentication → Users tab
+ * 2. Search for the user's email to verify they exist
+ * 3. Check if the account is enabled (not disabled)
+ * 4. Verify the authentication method (email/password vs Google)
+ * 5. Check the "Sign-in providers" tab to ensure Email/Password is enabled
+ *
+ * Common issues:
+ * - User may have signed up with Google but trying email/password
+ * - Email may have typos (check case sensitivity)
+ * - Account may have been disabled manually
  */
 export function getAuthErrorMessage(error: unknown): string {
   const errorCode = (error as { code?: string })?.code || '';
   const errorMessage = (error as { message?: string })?.message || '';
 
+  // Log error details for debugging (remove or guard in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Auth Debug] Error code:', errorCode);
+    console.log('[Auth Debug] Error message:', errorMessage);
+  }
+
   // Firebase Auth error codes
   const errorMessages: Record<string, string> = {
     // Sign-in errors
-    'auth/user-not-found': 'No account found with this email. Please sign up.',
+    'auth/user-not-found': 'No account found with this email. Please sign up first.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/invalid-email': 'Please enter a valid email address.',
-    'auth/invalid-credential': 'Invalid email or password. Please try again.',
+    'auth/invalid-credential': 'Invalid email or password. Please check your credentials and try again.',
     'auth/user-disabled': 'This account has been disabled. Please contact support.',
     'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
 
     // Sign-up errors
-    'auth/email-already-in-use': 'An account with this email already exists. Try signing in.',
+    'auth/email-already-in-use': 'An account with this email already exists. Try signing in instead.',
     'auth/weak-password': 'Password is too weak. Please use at least 6 characters.',
     'auth/operation-not-allowed': 'This sign-in method is not enabled. Please contact support.',
+
+    // Password reset errors
+    'auth/expired-action-code': 'This password reset link has expired. Please request a new one.',
+    'auth/invalid-action-code': 'This password reset link is invalid. Please request a new one.',
+    'auth/missing-email': 'Please enter your email address.',
 
     // Google sign-in errors
     'auth/popup-blocked': 'Sign-in popup was blocked. Please allow popups for this site.',
@@ -29,7 +52,7 @@ export function getAuthErrorMessage(error: unknown): string {
     'auth/account-exists-with-different-credential': 'An account already exists with this email. Try a different sign-in method.',
 
     // Network errors
-    'auth/network-request-failed': 'Network error. Please check your internet connection.',
+    'auth/network-request-failed': 'Network error. Please check your connection and try again.',
     'auth/timeout': 'Request timed out. Please try again.',
 
     // General errors

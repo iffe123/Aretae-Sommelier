@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { Wine } from "lucide-react";
+import { Wine, Loader2 } from "lucide-react";
 import { getAuthErrorMessage } from "@/lib/error-utils";
 
 interface AuthFormProps {
@@ -21,8 +21,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const router = useRouter();
+
+  // Check for authenticated user after OAuth redirect and redirect to cellar
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/cellar");
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +88,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking authentication to prevent form flash
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-wine-600 animate-spin" />
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">

@@ -25,7 +25,7 @@ import {
 import Link from "next/link";
 
 export default function CellarPage() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, checkingRedirect, signOut } = useAuth();
   const router = useRouter();
   const { toasts, removeToast, showError, showSuccess } = useToast();
 
@@ -71,10 +71,11 @@ export default function CellarPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Wait for BOTH auth loading AND redirect check to complete
+    if (!authLoading && !checkingRedirect && !user) {
       router.push("/signin");
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, checkingRedirect, router]);
 
   useEffect(() => {
     if (user) {
@@ -93,7 +94,7 @@ export default function CellarPage() {
     loadFilterOptions();
   };
 
-  if (authLoading) {
+  if (authLoading || checkingRedirect) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wine-50">
         <div className="animate-pulse">

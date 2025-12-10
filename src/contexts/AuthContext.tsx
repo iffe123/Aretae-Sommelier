@@ -25,6 +25,7 @@ import { auth } from "@/lib/firebase";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  checkingRedirect: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -37,30 +38,62 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingRedirect, setCheckingRedirect] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     if (!auth) {
       // Defer state update to avoid synchronous setState in effect
-      queueMicrotask(() => setLoading(false));
+      queueMicrotask(() => {
+        setCheckingRedirect(false);
+        setLoading(false);
+      });
       return;
     }
 
+    let authStateResolved = false;
+    let redirectCheckResolved = false;
+    let resolvedUser: User | null = null;
+
+    const tryFinishLoading = () => {
+      // Only finish loading when both checks are complete
+      if (authStateResolved && redirectCheckResolved) {
+        setLoading(false);
+        setCheckingRedirect(false);
+      }
+    };
+
     // Handle redirect result from Google sign-in (for mobile devices)
+    // This must complete before we consider auth loading to be done
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
+          // User successfully authenticated via redirect
           setUser(result.user);
+          // Clear the OAuth redirect marker since auth succeeded
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem("oauth_redirect_pending");
+          }
         }
+        redirectCheckResolved = true;
+        tryFinishLoading();
       })
       .catch((error) => {
         console.error("Redirect sign-in error:", error);
+        // Clear the OAuth redirect marker on error
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.removeItem("oauth_redirect_pending");
+        }
+        redirectCheckResolved = true;
+        tryFinishLoading();
       });
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      resolvedUser = authUser;
+      setUser(authUser);
+      authStateResolved = true;
+      tryFinishLoading();
     });
 
     return () => unsubscribe();
@@ -86,6 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isInAppBrowser = /FBAN|FBAV|Instagram|Twitter|Line/i.test(navigator.userAgent);
 
     if (isMobile || isInAppBrowser) {
+      // Set marker before redirect so we know we're in OAuth flow when returning
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("oauth_redirect_pending", "true");
+      }
       // Use redirect flow for mobile - more reliable than popups
       await signInWithRedirect(auth, provider);
     } else {
@@ -97,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const firebaseError = error as { code?: string };
         if (firebaseError.code === 'auth/popup-blocked' ||
             firebaseError.code === 'auth/popup-closed-by-user') {
+          // Set marker before redirect
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.setItem("oauth_redirect_pending", "true");
+          }
           await signInWithRedirect(auth, provider);
         } else {
           throw error;
@@ -119,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signIn, signUp, signInWithGoogle, signOut, resetPassword }}
+      value={{ user, loading, checkingRedirect, signIn, signUp, signInWithGoogle, signOut, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

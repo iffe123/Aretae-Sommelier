@@ -54,7 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let authStateResolved = false;
     let redirectCheckResolved = false;
-    let resolvedUser: User | null = null;
 
     const tryFinishLoading = () => {
       // Only finish loading when both checks are complete
@@ -90,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      resolvedUser = authUser;
       setUser(authUser);
       authStateResolved = true;
       tryFinishLoading();

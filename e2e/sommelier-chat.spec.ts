@@ -276,9 +276,6 @@ test.describe('Chat API Integration Pattern', () => {
     await page.getByLabel(/Email/i).fill('test@example.com');
     await page.getByLabel(/Password/i).fill('password123');
 
-    // Get initial URL
-    const initialUrl = page.url();
-
     // Submit form
     await page.getByRole('button', { name: /Sign In/i }).click();
 

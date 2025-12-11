@@ -67,7 +67,7 @@ function formatCellarSummary(cellarData: CellarData): string {
     return "";
   }
 
-  let summary = `\n\nUSER'S WINE CELLAR (${cellarData.wines.length} wines, ${cellarData.totalBottles} total bottles, ~$${cellarData.totalValue.toLocaleString()} estimated value):\n`;
+  let summary = `\n\nUSER'S WINE CELLAR (${cellarData.wines.length} wines, ${cellarData.totalBottles} total bottles, ~${cellarData.totalValue.toLocaleString()} kr estimated value):\n`;
 
   // Format each wine efficiently to minimize tokens
   cellarData.wines.forEach((wine, index) => {
@@ -79,7 +79,7 @@ function formatCellarSummary(cellarData: CellarData): string {
       `${wine.region}, ${wine.country}`,
     ];
 
-    if (wine.price) parts.push(`$${wine.price}`);
+    if (wine.price) parts.push(`${wine.price} kr`);
     if (wine.rating) parts.push(`${wine.rating}/5 stars`);
     if (wine.quantity && wine.quantity > 1) parts.push(`${wine.quantity} bottles`);
     if (wine.storageLocation) parts.push(`Location: ${wine.storageLocation}`);
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 - Vintage: ${wine.vintage}
 - Grape: ${wine.grapeVariety}
 - Region: ${wine.region}, ${wine.country}
-- Price: $${wine.price}
+- Price: ${wine.price} kr
 ${wine.rating ? `- User's Rating: ${wine.rating}/5 stars` : ""}
 ${wine.tastingNotes ? `- User's Tasting Notes: ${wine.tastingNotes}` : ""}
 

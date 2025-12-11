@@ -95,12 +95,12 @@ export default function StatsPage() {
   );
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("sv-SE", {
       style: "currency",
-      currency: "USD",
+      currency: "SEK",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(value).replace("SEK", "kr");
   };
 
   const formatRating = (rating: number) => {

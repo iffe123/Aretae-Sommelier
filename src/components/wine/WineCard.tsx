@@ -63,7 +63,7 @@ export default function WineCard({ wine }: WineCardProps) {
               <span className="text-xs text-gray-400">Not rated</span>
             )}
             <span className="text-sm font-medium text-gray-900">
-              ${wine.price.toFixed(2)}
+              {wine.price.toFixed(0)} kr
             </span>
           </div>
 

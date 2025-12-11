@@ -25,7 +25,7 @@ export interface WineFormData {
   grapeVariety: string;
   region: string;
   country: string;
-  price: number;
+  price: number | undefined;
   photo?: File;
   rating?: number;
   tastingNotes?: string;

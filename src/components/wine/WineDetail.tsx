@@ -62,7 +62,7 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
     {
       icon: DollarSign,
       label: "Price",
-      value: `$${wine.price.toFixed(2)}`,
+      value: `${wine.price.toFixed(0)} kr`,
     },
     {
       icon: Package,

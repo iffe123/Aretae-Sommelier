@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 const WINE_LABEL_PROMPT = `Analyze this wine bottle label image and extract the following information. Return ONLY a valid JSON object with these fields (use null for any field you cannot determine):
 {
@@ -28,23 +27,6 @@ interface WineLabelData {
 }
 
 export async function POST(request: NextRequest) {
-  // Check rate limit
-  const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`analyze:${clientIP}`);
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests. Please wait a moment before trying again." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(Math.ceil(rateLimit.resetInMs / 1000)),
-          "X-RateLimit-Remaining": "0",
-        },
-      }
-    );
-  }
-
   try {
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -83,7 +65,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Remove data URL prefix if present
     const base64Data = imageBase64.includes(',')
       ? imageBase64.split(',')[1]
       : imageBase64;
@@ -104,24 +85,17 @@ export async function POST(request: NextRequest) {
     const response = await result.response;
     const text = response.text();
 
-    // Parse the JSON response
     let wineData: WineLabelData;
     try {
-      // Try to extract JSON from the response (handle potential markdown code blocks)
       let jsonString = text;
-
-      // Remove markdown code blocks if present
       const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
         jsonString = jsonMatch[1].trim();
       }
-
-      // Try to find JSON object in the response
       const objectMatch = jsonString.match(/\{[\s\S]*\}/);
       if (objectMatch) {
         jsonString = objectMatch[0];
       }
-
       wineData = JSON.parse(jsonString);
     } catch (parseError) {
       console.error("Failed to parse Gemini response as JSON:", text, parseError);

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 const SOMMELIER_SYSTEM_PROMPT = `You are an expert sommelier with decades of experience in wine tasting, pairing, and cellar management. You are warm, approachable, and passionate about helping people discover and enjoy wine.
 
@@ -34,23 +33,6 @@ interface ChatMessage {
 }
 
 export async function POST(request: NextRequest) {
-  // Check rate limit
-  const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`chat:${clientIP}`);
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests. Please wait a moment before trying again." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(Math.ceil(rateLimit.resetInMs / 1000)),
-          "X-RateLimit-Remaining": "0",
-        },
-      }
-    );
-  }
-
   try {
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -62,7 +44,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate API key format (should be a non-empty string)
     if (typeof apiKey !== 'string' || apiKey.trim().length === 0 || apiKey === 'your_gemini_api_key_here') {
       console.error("GEMINI_API_KEY appears to be invalid or placeholder value");
       return NextResponse.json(
@@ -140,10 +121,8 @@ Consider this wine when answering their question.`;
   } catch (error: unknown) {
     console.error("Chat API error:", error);
 
-    // Provide more specific error messages based on the error type
     const errorObj = error as { message?: string; status?: number; statusText?: string };
 
-    // Check for common Gemini API errors
     if (errorObj.message?.includes('API key')) {
       return NextResponse.json(
         { error: "Invalid Gemini API key. Please check your GEMINI_API_KEY configuration." },

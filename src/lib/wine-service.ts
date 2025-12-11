@@ -198,9 +198,8 @@ export async function getUserWines(
     where("userId", "==", userId)
   );
 
-  if (filters?.isWishlist !== undefined) {
-    q = query(q, where("isWishlist", "==", filters.isWishlist));
-  }
+  // Note: isWishlist filter moved to client-side to handle missing/undefined fields
+  // Firestore's where("isWishlist", "==", false) doesn't match documents where field is missing
 
   if (filters?.minRating) {
     q = query(q, where("rating", ">=", filters.minRating));
@@ -256,6 +255,20 @@ export async function getUserWines(
     wines = wines.filter((wine) =>
       wine.storageLocation?.toLowerCase().includes(filters.storageLocation!.toLowerCase())
     );
+  }
+
+  // Client-side isWishlist filter to handle missing/undefined fields correctly
+  // When filtering for cellar wines (isWishlist: false), include wines where:
+  // - isWishlist is explicitly false
+  // - isWishlist is undefined, null, or missing (legacy wines)
+  if (filters?.isWishlist !== undefined) {
+    if (filters.isWishlist === true) {
+      // Only include explicit wishlist items
+      wines = wines.filter((wine) => wine.isWishlist === true);
+    } else {
+      // Include non-wishlist items (false, undefined, null, missing)
+      wines = wines.filter((wine) => wine.isWishlist !== true);
+    }
   }
 
   return wines;

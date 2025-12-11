@@ -232,7 +232,6 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handlePhotoChange}
             className="hidden"
             disabled={analyzing}

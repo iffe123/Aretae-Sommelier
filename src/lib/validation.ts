@@ -97,7 +97,7 @@ export function validatePrice(price: number | string | undefined | null): Valida
   }
 
   if (priceNum > MAX_PRICE) {
-    return { valid: false, error: `Price cannot exceed $${MAX_PRICE.toLocaleString()}` };
+    return { valid: false, error: `Price cannot exceed ${MAX_PRICE.toLocaleString()} kr` };
   }
 
   return { valid: true };

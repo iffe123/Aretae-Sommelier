@@ -34,6 +34,9 @@ export const LIMITS = {
 const currentYear = new Date().getFullYear();
 const minVintageYear = 1900;
 
+// Maximum price validation
+export const MAX_PRICE = 1000000;
+
 /**
  * Validates a required field
  */
@@ -91,6 +94,10 @@ export function validatePrice(price: number | string | undefined | null): Valida
 
   if (priceNum < 0) {
     return { valid: false, error: 'Price cannot be negative' };
+  }
+
+  if (priceNum > MAX_PRICE) {
+    return { valid: false, error: `Price cannot exceed $${MAX_PRICE.toLocaleString()}` };
   }
 
   return { valid: true };

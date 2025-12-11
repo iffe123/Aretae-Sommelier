@@ -43,6 +43,16 @@ export default function WineFilters({
   const debouncedSearch = useDebounce(searchInput, 300);
   const isFirstRender = useRef(true);
 
+  // Store latest filters and callback in refs to avoid dependency issues
+  const filtersRef = useRef(filters);
+  const onFilterChangeRef = useRef(onFilterChange);
+
+  // Keep refs up to date
+  useEffect(() => {
+    filtersRef.current = filters;
+    onFilterChangeRef.current = onFilterChange;
+  }, [filters, onFilterChange]);
+
   // Update filters when debounced search changes
   useEffect(() => {
     // Skip the first render to avoid triggering on mount
@@ -50,8 +60,8 @@ export default function WineFilters({
       isFirstRender.current = false;
       return;
     }
-    onFilterChange({ ...filters, search: debouncedSearch || undefined });
-  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+    onFilterChangeRef.current({ ...filtersRef.current, search: debouncedSearch || undefined });
+  }, [debouncedSearch]);
 
   const updateFilter = useCallback((key: keyof WineFilterOptions, value: unknown) => {
     onFilterChange({ ...filters, [key]: value || undefined });
@@ -84,8 +94,9 @@ export default function WineFilters({
           <button
             onClick={() => setSearchInput("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+            aria-label="Clear search"
           >
-            <X className="w-4 h-4 text-gray-400" />
+            <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
           </button>
         )}
       </div>

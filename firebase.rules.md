@@ -76,6 +76,74 @@ service firebase.storage {
    - Copy the Storage rules above
    - Click "Publish"
 
+## Firestore Indexes
+
+The app requires composite indexes for efficient querying. If you see "index required" errors in the console, Firestore will provide a direct link to create the missing index.
+
+### Required Composite Indexes
+
+Create these indexes in Firebase Console > Firestore Database > Indexes, or use the Firebase CLI.
+
+| Collection | Fields | Query Scope |
+|------------|--------|-------------|
+| wines | `userId` (Asc), `createdAt` (Desc) | Collection |
+| wines | `userId` (Asc), `isWishlist` (Asc), `createdAt` (Desc) | Collection |
+| wines | `userId` (Asc), `rating` (Asc), `createdAt` (Desc) | Collection |
+| wines | `userId` (Asc), `name` (Asc) | Collection |
+| wines | `userId` (Asc), `name` (Desc) | Collection |
+| wines | `userId` (Asc), `vintage` (Asc) | Collection |
+| wines | `userId` (Asc), `vintage` (Desc) | Collection |
+| wines | `userId` (Asc), `rating` (Desc) | Collection |
+| wines | `userId` (Asc), `price` (Asc) | Collection |
+| wines | `userId` (Asc), `price` (Desc) | Collection |
+
+### Using Firebase CLI
+
+To create indexes using the CLI:
+
+```bash
+# Export current indexes
+firebase firestore:indexes > firestore.indexes.json
+
+# Deploy indexes from file
+firebase deploy --only firestore:indexes
+```
+
+Example `firestore.indexes.json`:
+```json
+{
+  "indexes": [
+    {
+      "collectionGroup": "wines",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wines",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isWishlist", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wines",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "rating", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+```
+
 ## Security Checklist
 
 - [x] Gemini API key is server-side only (no NEXT_PUBLIC_ prefix)

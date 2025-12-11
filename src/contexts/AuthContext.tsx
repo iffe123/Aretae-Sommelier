@@ -22,6 +22,13 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
+// Development-only logging helper
+const debugLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -43,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    console.log('[Auth] AuthProvider useEffect starting');
+    debugLog('[Auth] AuthProvider useEffect starting');
 
     if (!auth) {
       console.error('[Auth] Firebase auth not initialized');
@@ -55,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log('[Auth] Firebase auth is valid');
+    debugLog('[Auth] Firebase auth is valid');
 
     let authStateResolved = false;
     let redirectCheckResolved = false;
@@ -63,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const tryFinishLoading = () => {
       // Only finish loading when both checks are complete
       if (authStateResolved && redirectCheckResolved) {
-        console.log('[Auth] Both auth state and redirect check resolved, finishing loading');
+        debugLog('[Auth] Both auth state and redirect check resolved, finishing loading');
         setLoading(false);
         setCheckingRedirect(false);
       }
@@ -72,17 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear the OAuth redirect marker helper
     const clearOAuthMarker = () => {
       if (typeof sessionStorage !== "undefined") {
-        console.log('[Auth] Clearing oauth_redirect_pending marker');
+        debugLog('[Auth] Clearing oauth_redirect_pending marker');
         sessionStorage.removeItem("oauth_redirect_pending");
       }
     };
 
     // Handle redirect result from Google sign-in (for mobile devices)
     // This must complete before we consider auth loading to be done
-    console.log('[Auth] Calling getRedirectResult...');
+    debugLog('[Auth] Calling getRedirectResult...');
     getRedirectResult(auth)
       .then((result) => {
-        console.log('[Auth] getRedirectResult:', result ? `has user: ${result.user?.email}` : 'no result');
+        debugLog('[Auth] getRedirectResult:', result ? `has user: ${result.user?.email}` : 'no result');
         if (result?.user) {
           // User successfully authenticated via redirect
           setUser(result.user);
@@ -112,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 5000);
 
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      console.log('[Auth] onAuthStateChanged:', authUser ? `user: ${authUser.email}` : 'no user');
+      debugLog('[Auth] onAuthStateChanged:', authUser ? `user: ${authUser.email}` : 'no user');
       setUser(authUser);
       authStateResolved = true;
       tryFinishLoading();
@@ -136,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    console.log('[Auth] signInWithGoogle called');
+    debugLog('[Auth] signInWithGoogle called');
 
     if (!auth) {
       console.error('[Auth] Firebase auth not initialized');
@@ -149,10 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const isInAppBrowser = /FBAN|FBAV|Instagram|Twitter|Line/i.test(navigator.userAgent);
 
-    console.log('[Auth] Device detection:', { isMobile, isInAppBrowser, userAgent: navigator.userAgent });
+    debugLog('[Auth] Device detection:', { isMobile, isInAppBrowser, userAgent: navigator.userAgent });
 
     if (isMobile || isInAppBrowser) {
-      console.log('[Auth] Using redirect flow for mobile/in-app browser');
+      debugLog('[Auth] Using redirect flow for mobile/in-app browser');
       // Set marker before redirect so we know we're in OAuth flow when returning
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem("oauth_redirect_pending", "true");
@@ -161,17 +168,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithRedirect(auth, provider);
     } else {
       // Use popup for desktop - better UX
-      console.log('[Auth] Using popup flow for desktop');
+      debugLog('[Auth] Using popup flow for desktop');
       try {
         const result = await signInWithPopup(auth, provider);
-        console.log('[Auth] Popup sign-in successful:', result.user?.email);
+        debugLog('[Auth] Popup sign-in successful:', result.user?.email);
       } catch (error: unknown) {
         console.error('[Auth] Popup sign-in error:', error);
         // If popup is blocked or fails, fallback to redirect
         const firebaseError = error as { code?: string; message?: string };
         if (firebaseError.code === 'auth/popup-blocked' ||
             firebaseError.code === 'auth/popup-closed-by-user') {
-          console.log('[Auth] Popup blocked/closed, falling back to redirect');
+          debugLog('[Auth] Popup blocked/closed, falling back to redirect');
           // Set marker before redirect
           if (typeof sessionStorage !== "undefined") {
             sessionStorage.setItem("oauth_redirect_pending", "true");

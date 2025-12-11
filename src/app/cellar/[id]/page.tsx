@@ -8,6 +8,8 @@ import { getWine, updateWine } from "@/lib/wine-service";
 import WineDetail from "@/components/wine/WineDetail";
 import WineForm from "@/components/wine/WineForm";
 import Modal from "@/components/ui/Modal";
+import { ToastContainer, useToast } from "@/components/ui/Toast";
+import { getFirestoreErrorMessage } from "@/lib/error-utils";
 import { Wine as WineIcon } from "lucide-react";
 
 interface WineDetailPageProps {
@@ -22,6 +24,7 @@ export default function WineDetailPage({ params }: WineDetailPageProps) {
   const [wine, setWine] = useState<Wine | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const { toasts, removeToast, showSuccess, showError } = useToast();
 
   useEffect(() => {
     // Wait for BOTH auth loading AND redirect check to complete
@@ -60,8 +63,10 @@ export default function WineDetailPage({ params }: WineDetailPageProps) {
         setWine(updatedWine);
       }
       setShowEditModal(false);
+      showSuccess("Wine updated successfully!");
     } catch (error) {
       console.error("Error updating wine:", error);
+      showError(getFirestoreErrorMessage(error));
     }
   };
 
@@ -96,6 +101,8 @@ export default function WineDetailPage({ params }: WineDetailPageProps) {
           />
         </div>
       </Modal>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
 }

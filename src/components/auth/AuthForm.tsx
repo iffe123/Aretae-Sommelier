@@ -27,7 +27,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   // Check for authenticated user after OAuth redirect and redirect to cellar
   // Wait for BOTH auth loading AND redirect check to complete
   useEffect(() => {
+    console.log('[AuthForm] Auth state check:', { authLoading, checkingRedirect, hasUser: !!user, userEmail: user?.email });
     if (!authLoading && !checkingRedirect && user) {
+      console.log('[AuthForm] User authenticated, redirecting to /cellar');
       router.push("/cellar");
     }
   }, [user, authLoading, checkingRedirect, router]);
@@ -53,18 +55,24 @@ export default function AuthForm({ mode }: AuthFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
+    console.log('[AuthForm] Google sign-in button clicked');
     setError("");
     setSuccessMessage("");
     setLoading(true);
 
     try {
       await signInWithGoogle();
-      router.push("/cellar");
+      console.log('[AuthForm] signInWithGoogle completed');
+      // Don't call router.push here - for redirect flow, the page will reload
+      // For popup flow, the useEffect will handle the redirect when user state changes
+      // Setting loading false only if we didn't redirect (popup success case)
+      setLoading(false);
     } catch (err: unknown) {
+      console.error('[AuthForm] Google sign-in error:', err);
       setError(getAuthErrorMessage(err));
-    } finally {
       setLoading(false);
     }
+    // Note: Don't use finally to set loading=false since redirect flow won't return here
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -93,6 +101,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   // Show loading state while checking authentication to prevent form flash
   // Also show loading when processing OAuth redirect result
   if (authLoading || checkingRedirect) {
+    console.log('[AuthForm] Showing loading state:', { authLoading, checkingRedirect });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">
         <div className="flex flex-col items-center gap-4">

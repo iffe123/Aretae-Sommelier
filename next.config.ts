@@ -6,6 +6,14 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  // Exclude auth pages from service worker caching to prevent OAuth redirect issues
+  runtimeCaching: [
+    {
+      // Don't cache auth-related navigation requests
+      urlPattern: /\/(signin|signup|auth)/,
+      handler: "NetworkOnly",
+    },
+  ],
 });
 
 const nextConfig: NextConfig = {

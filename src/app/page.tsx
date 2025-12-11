@@ -8,16 +8,18 @@ import Button from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, checkingRedirect } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    // Wait for BOTH auth loading AND redirect check to complete before redirecting
+    if (!loading && !checkingRedirect && user) {
       router.push("/cellar");
     }
-  }, [user, loading, router]);
+  }, [user, loading, checkingRedirect, router]);
 
-  if (loading) {
+  // Show loading state while checking auth OR processing OAuth redirect
+  if (loading || checkingRedirect) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wine-600">
         <div className="animate-pulse">

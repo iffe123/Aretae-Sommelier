@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limiter";
 
 const WINE_LABEL_PROMPT = `Analyze this wine bottle label image and extract the following information. Return ONLY a valid JSON object with these fields (use null for any field you cannot determine):
 {
@@ -27,6 +28,23 @@ interface WineLabelData {
 }
 
 export async function POST(request: NextRequest) {
+  // Check rate limit
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`analyze:${clientIP}`);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment before trying again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(rateLimit.resetInMs / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const apiKey = process.env.GEMINI_API_KEY;
 

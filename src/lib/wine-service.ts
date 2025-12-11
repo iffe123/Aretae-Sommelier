@@ -22,6 +22,18 @@ import { Wine, WineFormData, WineFilterOptions } from "@/types/wine";
 
 const WINES_COLLECTION = "wines";
 
+/**
+ * Sanitize a string input by stripping HTML tags and trimming whitespace.
+ * Preserves special characters that are legitimate in wine names (accents, &, etc.)
+ */
+function sanitizeString(value: string | undefined | null): string {
+  if (!value) return '';
+  // Strip HTML tags while preserving text content
+  const withoutTags = value.replace(/<[^>]*>/g, '');
+  // Trim whitespace and normalize internal whitespace
+  return withoutTags.trim().replace(/\s+/g, ' ');
+}
+
 export async function uploadWinePhoto(
   userId: string,
   file: File
@@ -78,21 +90,21 @@ export async function addWine(
     photoUrl = await uploadWinePhoto(userId, data.photo);
   }
 
-  // Sanitize all fields to prevent undefined values in Firestore
+  // Sanitize all string fields and prevent undefined values in Firestore
   const wineData = {
     userId,
-    name: data.name || '',
-    winery: data.winery || '',
+    name: sanitizeString(data.name),
+    winery: sanitizeString(data.winery),
     vintage: data.vintage || null,
-    grapeVariety: data.grapeVariety || '',
-    region: data.region || '',
-    country: data.country || '',
+    grapeVariety: sanitizeString(data.grapeVariety),
+    region: sanitizeString(data.region),
+    country: sanitizeString(data.country),
     price: data.price || 0,
     photoUrl: photoUrl || '',  // Never undefined!
     rating: data.rating || 0,
-    tastingNotes: data.tastingNotes || '',
+    tastingNotes: sanitizeString(data.tastingNotes),
     bottlesOwned: data.bottlesOwned || 0,
-    storageLocation: data.storageLocation || '',
+    storageLocation: sanitizeString(data.storageLocation),
     isWishlist: data.isWishlist || false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
@@ -122,16 +134,27 @@ export async function updateWine(
     }
   }
 
+  // Sanitize string fields before update
+  const sanitizedData: Record<string, unknown> = {};
+  const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation'];
+
+  for (const [key, value] of Object.entries(data)) {
+    if (key === 'photo') continue; // Skip photo field
+    if (stringFields.includes(key) && typeof value === 'string') {
+      sanitizedData[key] = sanitizeString(value);
+    } else {
+      sanitizedData[key] = value;
+    }
+  }
+
   const updateData: Record<string, unknown> = {
-    ...data,
+    ...sanitizedData,
     updatedAt: Timestamp.now(),
   };
 
   if (photoUrl !== undefined) {
     updateData.photoUrl = photoUrl;
   }
-
-  delete updateData.photo;
 
   await updateDoc(doc(db, WINES_COLLECTION, wineId), updateData);
 }

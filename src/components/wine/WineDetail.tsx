@@ -8,7 +8,9 @@ import { deleteWine } from "@/lib/wine-service";
 import Button from "@/components/ui/Button";
 import StarRating from "@/components/ui/StarRating";
 import Modal from "@/components/ui/Modal";
+import { ToastContainer, useToast } from "@/components/ui/Toast";
 import SommelierChat from "@/components/chat/SommelierChat";
+import { getFirestoreErrorMessage } from "@/lib/error-utils";
 import {
   Wine as WineIcon,
   MapPin,
@@ -33,6 +35,7 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const { toasts, removeToast, showError } = useToast();
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -41,6 +44,8 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
       router.push("/cellar");
     } catch (error) {
       console.error("Error deleting wine:", error);
+      showError(getFirestoreErrorMessage(error));
+      setShowDeleteConfirm(false);
     } finally {
       setDeleting(false);
     }
@@ -232,6 +237,9 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
         isOpen={showChat}
         onClose={() => setShowChat(false)}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
 }

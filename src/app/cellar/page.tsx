@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Wine, WineFilterOptions } from "@/types/wine";
@@ -39,6 +39,12 @@ export default function CellarPage() {
   const [countries, setCountries] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
 
+  // Use ref for showError to avoid it in useCallback dependencies
+  const showErrorRef = useRef(showError);
+  useEffect(() => {
+    showErrorRef.current = showError;
+  }, [showError]);
+
   const loadWines = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -47,11 +53,11 @@ export default function CellarPage() {
       setWines(data);
     } catch (error) {
       console.error("Error loading wines:", error);
-      showError(getFirestoreErrorMessage(error));
+      showErrorRef.current(getFirestoreErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [user, filters, showError]);
+  }, [user, filters]);
 
   const loadFilterOptions = useCallback(async () => {
     if (!user) return;

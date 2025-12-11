@@ -106,11 +106,8 @@ export function getDrinkingWindowInfo(wine: Wine): DrinkingWindowInfo {
     status = "approaching-peak";
     statusLabel = "At Peak";
     statusEmoji = "🟡";
-  } else if (currentYear >= window.start && currentYear <= window.end) {
-    status = "ready";
-    statusLabel = "Ready Now";
-    statusEmoji = "🟢";
   } else {
+    // currentYear is within window but not at peak
     status = "ready";
     statusLabel = "Ready Now";
     statusEmoji = "🟢";

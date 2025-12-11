@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Wine, Loader2 } from "lucide-react";
 import { getAuthErrorMessage } from "@/lib/error-utils";
+
+// Development-only logging helper
+const debugLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -27,9 +35,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   // Check for authenticated user after OAuth redirect and redirect to cellar
   // Wait for BOTH auth loading AND redirect check to complete
   useEffect(() => {
-    console.log('[AuthForm] Auth state check:', { authLoading, checkingRedirect, hasUser: !!user, userEmail: user?.email });
+    debugLog('[AuthForm] Auth state check:', { authLoading, checkingRedirect, hasUser: !!user, userEmail: user?.email });
     if (!authLoading && !checkingRedirect && user) {
-      console.log('[AuthForm] User authenticated, redirecting to /cellar');
+      debugLog('[AuthForm] User authenticated, redirecting to /cellar');
       router.push("/cellar");
     }
   }, [user, authLoading, checkingRedirect, router]);
@@ -55,20 +63,20 @@ export default function AuthForm({ mode }: AuthFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
-    console.log('[AuthForm] Google sign-in button clicked');
+    debugLog('[AuthForm] Google sign-in button clicked');
     setError("");
     setSuccessMessage("");
     setLoading(true);
 
     try {
       await signInWithGoogle();
-      console.log('[AuthForm] signInWithGoogle completed');
+      debugLog('[AuthForm] signInWithGoogle completed');
       // Don't call router.push here - for redirect flow, the page will reload
       // For popup flow, the useEffect will handle the redirect when user state changes
       // Setting loading false only if we didn't redirect (popup success case)
       setLoading(false);
     } catch (err: unknown) {
-      console.error('[AuthForm] Google sign-in error:', err);
+      debugLog('[AuthForm] Google sign-in error:', err);
       setError(getAuthErrorMessage(err));
       setLoading(false);
     }
@@ -101,7 +109,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   // Show loading state while checking authentication to prevent form flash
   // Also show loading when processing OAuth redirect result
   if (authLoading || checkingRedirect) {
-    console.log('[AuthForm] Showing loading state:', { authLoading, checkingRedirect });
+    debugLog('[AuthForm] Showing loading state:', { authLoading, checkingRedirect });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-50 to-wine-100 px-4">
         <div className="flex flex-col items-center gap-4">
@@ -210,7 +218,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 {mode === "signin" && (
                   <button
@@ -276,16 +284,16 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 {mode === "signin" ? (
                   <>
                     Don&apos;t have an account?{" "}
-                    <a href="/signup" className="text-wine-600 hover:text-wine-700 font-medium">
+                    <Link href="/signup" className="text-wine-600 hover:text-wine-700 font-medium">
                       Sign up
-                    </a>
+                    </Link>
                   </>
                 ) : (
                   <>
                     Already have an account?{" "}
-                    <a href="/signin" className="text-wine-600 hover:text-wine-700 font-medium">
+                    <Link href="/signin" className="text-wine-600 hover:text-wine-700 font-medium">
                       Sign in
-                    </a>
+                    </Link>
                   </>
                 )}
               </p>

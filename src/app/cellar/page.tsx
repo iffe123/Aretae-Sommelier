@@ -38,6 +38,7 @@ export default function CellarPage() {
   const [grapeVarieties, setGrapeVarieties] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
+  const [storageLocations, setStorageLocations] = useState<string[]>([]);
 
   // Use ref for showError to avoid it in useCallback dependencies
   const showErrorRef = useRef(showError);
@@ -62,14 +63,16 @@ export default function CellarPage() {
   const loadFilterOptions = useCallback(async () => {
     if (!user) return;
     try {
-      const [grapes, ctries, rgns] = await Promise.all([
+      const [grapes, ctries, rgns, storageLocs] = await Promise.all([
         getUniqueValues(user.uid, "grapeVariety"),
         getUniqueValues(user.uid, "country"),
         getUniqueValues(user.uid, "region"),
+        getUniqueValues(user.uid, "storageLocation"),
       ]);
       setGrapeVarieties(grapes);
       setCountries(ctries);
       setRegions(rgns);
+      setStorageLocations(storageLocs);
     } catch (error) {
       console.error("Error loading filter options:", error);
       // Don't show toast for filter loading errors - not critical
@@ -189,6 +192,7 @@ export default function CellarPage() {
             grapeVarieties={grapeVarieties}
             countries={countries}
             regions={regions}
+            storageLocations={storageLocations}
           />
         </div>
 
@@ -197,7 +201,7 @@ export default function CellarPage() {
           wines={wines}
           loading={loading}
           emptyMessage="Your cellar is empty"
-          isFilterActive={!!(filters.search || filters.grapeVariety || filters.country || filters.region)}
+          isFilterActive={!!(filters.search || filters.grapeVariety || filters.country || filters.region || filters.storageLocation)}
           onAddWine={() => setShowAddModal(true)}
           onClearFilters={() => setFilters({})}
         />

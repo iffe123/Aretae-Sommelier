@@ -122,6 +122,13 @@ export async function POST(request: NextRequest) {
 
     const { message, wineContext, conversationHistory, cellarData } = requestBody;
 
+    console.log("[Chat API] Received request:", {
+      message: message?.substring(0, 50) + (message?.length > 50 ? "..." : ""),
+      hasWineContext: !!wineContext,
+      hasCellarData: !!cellarData,
+      cellarWineCount: cellarData?.wines?.length || 0,
+    });
+
     if (!message || typeof message !== "string") {
       return NextResponse.json(
         { error: "Message is required" },
@@ -140,9 +147,16 @@ export async function POST(request: NextRequest) {
     if (cellarData) {
       const typedCellarData = cellarData as CellarData;
       cellarSummary = formatCellarSummary(typedCellarData);
+      console.log("[Chat API] Cellar summary generated:", {
+        hasSummary: !!cellarSummary,
+        summaryLength: cellarSummary?.length || 0,
+        wineCount: typedCellarData.wines?.length || 0,
+      });
       if (cellarSummary) {
         fullSystemPrompt += CELLAR_AWARE_INSTRUCTIONS + cellarSummary;
       }
+    } else {
+      console.log("[Chat API] No cellar data provided to API");
     }
 
     // Add specific wine context if viewing a particular wine

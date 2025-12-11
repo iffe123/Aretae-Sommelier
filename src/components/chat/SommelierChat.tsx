@@ -105,6 +105,12 @@ export default function SommelierChat({
   useEffect(() => {
     const fetchCellarData = async () => {
       if (!isOpen || !user?.uid || cellarFetchedRef.current || cellarLoading) {
+        console.log("[SommelierChat] Skipping cellar fetch:", {
+          isOpen,
+          userId: user?.uid,
+          alreadyFetched: cellarFetchedRef.current,
+          cellarLoading,
+        });
         return;
       }
 
@@ -118,7 +124,13 @@ export default function SommelierChat({
           sortOrder: "desc",
           isWishlist: false, // Only include wines in cellar, not wishlist
         });
+        console.log("[SommelierChat] Fetched wines from cellar:", wines.length, "wines");
         const formattedData = formatCellarData(wines);
+        console.log("[SommelierChat] Formatted cellar data:", {
+          wineCount: formattedData.wines.length,
+          totalBottles: formattedData.totalBottles,
+          totalValue: formattedData.totalValue,
+        });
         setCellarData(formattedData);
       } catch (error) {
         console.error("Failed to fetch cellar data:", error);
@@ -144,6 +156,13 @@ export default function SommelierChat({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
+
+    console.log("[SommelierChat] Sending message to API:", {
+      message: content,
+      hasWineContext: !!wineContext,
+      hasCellarData: !!cellarData,
+      cellarWineCount: cellarData?.wines?.length || 0,
+    });
 
     try {
       const response = await chatWithSommelier(

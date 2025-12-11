@@ -48,7 +48,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     price: initialData?.price,
     rating: initialData?.rating,
     tastingNotes: initialData?.tastingNotes || "",
-    bottlesOwned: initialData?.bottlesOwned || 1,
+    // Only show actual value if > 0, otherwise leave empty for placeholder
+    bottlesOwned: initialData?.bottlesOwned && initialData.bottlesOwned > 0 ? initialData.bottlesOwned : undefined as unknown as number,
     storageLocation: initialData?.storageLocation || "",
     isWishlist: initialData?.isWishlist || false,
   });
@@ -355,9 +356,10 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           label="Bottles Owned"
           type="number"
           min={0}
-          value={formData.bottlesOwned}
+          value={formData.bottlesOwned ?? ''}
+          placeholder="1"
           onChange={(e) =>
-            setFormData({ ...formData, bottlesOwned: parseInt(e.target.value) || 0 })
+            setFormData({ ...formData, bottlesOwned: e.target.value === '' ? undefined as unknown as number : parseInt(e.target.value) })
           }
           error={validationErrors.bottlesOwned}
         />

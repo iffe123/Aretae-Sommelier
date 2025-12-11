@@ -39,6 +39,7 @@ export type WineFilterOptions = {
   grapeVariety?: string;
   country?: string;
   region?: string;
+  storageLocation?: string;
   minRating?: number;
   isWishlist?: boolean;
   sortBy?: "name" | "vintage" | "rating" | "price" | "createdAt";

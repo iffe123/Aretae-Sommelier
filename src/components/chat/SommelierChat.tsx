@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Wine } from "@/types/wine";
-import { chatWithSommelier } from "@/lib/gemini";
+import { chatWithSommelier, CellarData, CellarWineSummary } from "@/lib/gemini";
+import { getUserWines } from "@/lib/wine-service";
+import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import { Send, Wine as WineIcon, Bot, User, X } from "lucide-react";
 
@@ -33,14 +35,55 @@ const GENERAL_PROMPTS = [
   "What's the proper way to taste wine?",
 ];
 
+const CELLAR_PROMPTS = [
+  "What wine from my cellar pairs with pasta?",
+  "What wines do I have from France?",
+  "Which of my wines should I drink soon?",
+  "What's a good red from my collection for guests?",
+  "Show me my best rated wines",
+];
+
+const MAX_CELLAR_WINES = 50;
+
+function formatCellarData(wines: Wine[]): CellarData {
+  // Limit to most recent wines to avoid token limits
+  const limitedWines = wines.slice(0, MAX_CELLAR_WINES);
+
+  const cellarWines: CellarWineSummary[] = limitedWines.map((wine) => ({
+    name: wine.name,
+    winery: wine.winery,
+    vintage: wine.vintage,
+    grapeVariety: wine.grapeVariety,
+    region: wine.region,
+    country: wine.country,
+    price: wine.price || undefined,
+    rating: wine.rating || undefined,
+    quantity: wine.bottlesOwned || undefined,
+    storageLocation: wine.storageLocation || undefined,
+  }));
+
+  const totalBottles = wines.reduce((sum, wine) => sum + (wine.bottlesOwned || 0), 0);
+  const totalValue = wines.reduce((sum, wine) => sum + ((wine.price || 0) * (wine.bottlesOwned || 1)), 0);
+
+  return {
+    wines: cellarWines,
+    totalBottles,
+    totalValue,
+  };
+}
+
 export default function SommelierChat({
   wineContext,
   isOpen,
   onClose,
 }: SommelierChatProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cellarData, setCellarData] = useState<CellarData | null>(null);
+  const [cellarLoading, setCellarLoading] = useState(false);
+  const cellarFetchedRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +100,36 @@ export default function SommelierChat({
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // Fetch cellar data when chat opens (only once per session)
+  useEffect(() => {
+    const fetchCellarData = async () => {
+      if (!isOpen || !user?.uid || cellarFetchedRef.current || cellarLoading) {
+        return;
+      }
+
+      cellarFetchedRef.current = true;
+      setCellarLoading(true);
+
+      try {
+        // Fetch wines sorted by most recently added
+        const wines = await getUserWines(user.uid, {
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          isWishlist: false, // Only include wines in cellar, not wishlist
+        });
+        const formattedData = formatCellarData(wines);
+        setCellarData(formattedData);
+      } catch (error) {
+        console.error("Failed to fetch cellar data:", error);
+        // Continue without cellar data - chat still works
+      } finally {
+        setCellarLoading(false);
+      }
+    };
+
+    fetchCellarData();
+  }, [isOpen, user?.uid, cellarLoading]);
 
   // Clear messages when wine context changes to start fresh conversation
   useEffect(() => {
@@ -76,7 +149,8 @@ export default function SommelierChat({
       const response = await chatWithSommelier(
         content,
         wineContext,
-        messages
+        messages,
+        cellarData || undefined
       );
       const assistantMessage: Message = { role: "model", content: response };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -98,7 +172,12 @@ export default function SommelierChat({
     sendMessage(input);
   };
 
-  const suggestedPrompts = wineContext ? SUGGESTED_PROMPTS : GENERAL_PROMPTS;
+  // Use cellar-specific prompts when user has wines in their cellar
+  const suggestedPrompts = wineContext
+    ? SUGGESTED_PROMPTS
+    : (cellarData && cellarData.wines.length > 0)
+      ? CELLAR_PROMPTS
+      : GENERAL_PROMPTS;
 
   if (!isOpen) return null;
 
@@ -115,7 +194,11 @@ export default function SommelierChat({
             <p className="text-xs text-wine-200">
               {wineContext
                 ? `Discussing: ${wineContext.name}`
-                : "Your wine expert"}
+                : cellarLoading
+                  ? "Loading your cellar..."
+                  : cellarData && cellarData.wines.length > 0
+                    ? `Knows your ${cellarData.wines.length} wines`
+                    : "Your wine expert"}
             </p>
           </div>
         </div>
@@ -142,7 +225,9 @@ export default function SommelierChat({
             <p className="text-sm text-gray-500 mb-6">
               {wineContext
                 ? "I can help with pairings, serving tips, and more for this wine."
-                : "Ask me anything about wine - pairings, regions, techniques, and recommendations."}
+                : cellarData && cellarData.wines.length > 0
+                  ? `I have access to your cellar of ${cellarData.wines.length} wines (${cellarData.totalBottles} bottles). Ask me for recommendations from your collection!`
+                  : "Ask me anything about wine - pairings, regions, techniques, and recommendations."}
             </p>
 
             <div className="w-full space-y-2">

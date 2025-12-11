@@ -15,6 +15,17 @@ When given context about a specific wine from the user's collection, provide per
 
 Keep responses concise but informative. Use elegant language befitting a sommelier, but remain accessible to wine enthusiasts of all levels.`;
 
+const CELLAR_AWARE_INSTRUCTIONS = `
+IMPORTANT: You have access to the user's wine cellar collection. When making recommendations:
+- ALWAYS check if the user has a suitable wine in their collection before suggesting they buy something
+- Reference specific wines by name, winery, and vintage when recommending from their cellar
+- Include storage location if available so they can find the bottle
+- If they ask what wines they have from a region/country/grape, list the relevant wines from their cellar
+- If asked about food pairings, recommend wines FROM THEIR COLLECTION that would pair well
+- If they don't have a suitable wine, acknowledge this and suggest what to look for
+- When suggesting wines to drink soon, consider vintage age and typical aging potential for the grape variety
+- You can reference the total collection size and estimated value when relevant`;
+
 interface WineContext {
   name: string;
   winery: string;
@@ -30,6 +41,53 @@ interface WineContext {
 interface ChatMessage {
   role: "user" | "model";
   content: string;
+}
+
+interface CellarWineSummary {
+  name: string;
+  winery: string;
+  vintage: number;
+  grapeVariety: string;
+  region: string;
+  country: string;
+  price?: number;
+  rating?: number;
+  quantity?: number;
+  storageLocation?: string;
+}
+
+interface CellarData {
+  wines: CellarWineSummary[];
+  totalBottles: number;
+  totalValue: number;
+}
+
+function formatCellarSummary(cellarData: CellarData): string {
+  if (!cellarData.wines || cellarData.wines.length === 0) {
+    return "";
+  }
+
+  let summary = `\n\nUSER'S WINE CELLAR (${cellarData.wines.length} wines, ${cellarData.totalBottles} total bottles, ~$${cellarData.totalValue.toLocaleString()} estimated value):\n`;
+
+  // Format each wine efficiently to minimize tokens
+  cellarData.wines.forEach((wine, index) => {
+    const parts = [
+      `${index + 1}. ${wine.name}`,
+      wine.winery,
+      wine.vintage,
+      wine.grapeVariety,
+      `${wine.region}, ${wine.country}`,
+    ];
+
+    if (wine.price) parts.push(`$${wine.price}`);
+    if (wine.rating) parts.push(`${wine.rating}/5 stars`);
+    if (wine.quantity && wine.quantity > 1) parts.push(`${wine.quantity} bottles`);
+    if (wine.storageLocation) parts.push(`Location: ${wine.storageLocation}`);
+
+    summary += parts.join(" | ") + "\n";
+  });
+
+  return summary;
 }
 
 export async function POST(request: NextRequest) {
@@ -62,7 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, wineContext, conversationHistory } = requestBody;
+    const { message, wineContext, conversationHistory, cellarData } = requestBody;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -74,10 +132,24 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+    // Build the full system prompt with all context
+    let fullSystemPrompt = SOMMELIER_SYSTEM_PROMPT;
+
+    // Add cellar data if available
+    let cellarSummary = "";
+    if (cellarData) {
+      const typedCellarData = cellarData as CellarData;
+      cellarSummary = formatCellarSummary(typedCellarData);
+      if (cellarSummary) {
+        fullSystemPrompt += CELLAR_AWARE_INSTRUCTIONS + cellarSummary;
+      }
+    }
+
+    // Add specific wine context if viewing a particular wine
     let contextMessage = "";
     if (wineContext) {
       const wine = wineContext as WineContext;
-      contextMessage = `\n\nThe user is currently viewing this wine from their collection:
+      contextMessage = `\n\nThe user is currently viewing this specific wine from their collection:
 - Name: ${wine.name}
 - Winery: ${wine.winery}
 - Vintage: ${wine.vintage}
@@ -87,7 +159,7 @@ export async function POST(request: NextRequest) {
 ${wine.rating ? `- User's Rating: ${wine.rating}/5 stars` : ""}
 ${wine.tastingNotes ? `- User's Tasting Notes: ${wine.tastingNotes}` : ""}
 
-Consider this wine when answering their question.`;
+Focus your response on this specific wine when answering their question.`;
     }
 
     const history = (conversationHistory as ChatMessage[] | undefined)?.map((msg) => ({
@@ -99,7 +171,7 @@ Consider this wine when answering their question.`;
       history: [
         {
           role: "user",
-          parts: [{ text: SOMMELIER_SYSTEM_PROMPT + contextMessage }],
+          parts: [{ text: fullSystemPrompt + contextMessage }],
         },
         {
           role: "model",

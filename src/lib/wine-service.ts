@@ -103,7 +103,7 @@ export async function addWine(
     photoUrl: photoUrl || '',  // Never undefined!
     rating: data.rating || 0,
     tastingNotes: sanitizeString(data.tastingNotes),
-    bottlesOwned: data.bottlesOwned || 0,
+    bottlesOwned: data.bottlesOwned ?? 1,
     storageLocation: sanitizeString(data.storageLocation),
     isWishlist: data.isWishlist || false,
     createdAt: Timestamp.now(),
@@ -252,14 +252,22 @@ export async function getUserWines(
     );
   }
 
+  if (filters?.storageLocation) {
+    wines = wines.filter((wine) =>
+      wine.storageLocation?.toLowerCase().includes(filters.storageLocation!.toLowerCase())
+    );
+  }
+
   return wines;
 }
 
 export async function getUniqueValues(
   userId: string,
-  field: "grapeVariety" | "country" | "region"
+  field: "grapeVariety" | "country" | "region" | "storageLocation"
 ): Promise<string[]> {
   const wines = await getUserWines(userId);
-  const values = new Set(wines.map((wine) => wine[field]).filter(Boolean));
+  const values = new Set(
+    wines.map((wine) => wine[field]).filter((v): v is string => Boolean(v))
+  );
   return Array.from(values).sort();
 }

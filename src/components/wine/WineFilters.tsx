@@ -12,6 +12,7 @@ interface WineFiltersProps {
   grapeVarieties?: string[];
   countries?: string[];
   regions?: string[];
+  storageLocations?: string[];
 }
 
 // Custom hook for debouncing
@@ -37,6 +38,7 @@ export default function WineFilters({
   grapeVarieties = [],
   countries = [],
   regions = [],
+  storageLocations = [],
 }: WineFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search || "");
@@ -75,6 +77,7 @@ export default function WineFilters({
     filters.grapeVariety ||
     filters.country ||
     filters.region ||
+    filters.storageLocation ||
     filters.minRating ||
     filters.isWishlist !== undefined;
 
@@ -159,6 +162,17 @@ export default function WineFilters({
             options={[
               { value: "", label: "All regions" },
               ...regions.map((r) => ({ value: r, label: r })),
+            ]}
+          />
+
+          <Select
+            id="storageLocation"
+            label="Storage"
+            value={filters.storageLocation || ""}
+            onChange={(e) => updateFilter("storageLocation", e.target.value)}
+            options={[
+              { value: "", label: "All locations" },
+              ...storageLocations.map((s) => ({ value: s, label: s })),
             ]}
           />
 

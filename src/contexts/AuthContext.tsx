@@ -63,6 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Clear the OAuth redirect marker helper
+    const clearOAuthMarker = () => {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem("oauth_redirect_pending");
+      }
+    };
+
     // Handle redirect result from Google sign-in (for mobile devices)
     // This must complete before we consider auth loading to be done
     getRedirectResult(auth)
@@ -70,10 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (result?.user) {
           // User successfully authenticated via redirect
           setUser(result.user);
-          // Clear the OAuth redirect marker since auth succeeded
-          if (typeof sessionStorage !== "undefined") {
-            sessionStorage.removeItem("oauth_redirect_pending");
-          }
+          clearOAuthMarker();
+        } else {
+          // No redirect result - this is normal if user navigated directly
+          // Also clear marker in case it was stale from a failed previous attempt
+          clearOAuthMarker();
         }
         redirectCheckResolved = true;
         tryFinishLoading();
@@ -81,12 +89,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((error) => {
         console.error("Redirect sign-in error:", error);
         // Clear the OAuth redirect marker on error
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.removeItem("oauth_redirect_pending");
-        }
+        clearOAuthMarker();
         redirectCheckResolved = true;
         tryFinishLoading();
       });
+
+    // Fallback timeout to prevent infinite loading on mobile
+    // This handles edge cases where getRedirectResult might hang
+    const timeoutId = setTimeout(() => {
+      if (!redirectCheckResolved) {
+        console.warn("OAuth redirect check timed out - clearing redirect state");
+        clearOAuthMarker();
+        redirectCheckResolved = true;
+        tryFinishLoading();
+      }
+    }, 5000);
 
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
@@ -94,7 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tryFinishLoading();
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

@@ -21,6 +21,9 @@ import {
   LogOut,
   User,
   BarChart3,
+  ListChecks,
+  X,
+  Utensils,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -34,6 +37,10 @@ export default function CellarPage() {
   const [filters, setFilters] = useState<WineFilterOptions>({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChat, setShowChat] = useState(false);
+
+  // Wine menu selection state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedWines, setSelectedWines] = useState<Wine[]>([]);
 
   const [grapeVarieties, setGrapeVarieties] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
@@ -103,6 +110,31 @@ export default function CellarPage() {
     loadFilterOptions();
   };
 
+  // Wine menu selection handlers
+  const toggleSelectionMode = () => {
+    if (isSelectionMode) {
+      setSelectedWines([]);
+    }
+    setIsSelectionMode(!isSelectionMode);
+  };
+
+  const toggleWineSelection = (wine: Wine) => {
+    setSelectedWines((prev) => {
+      const isSelected = prev.some((w) => w.id === wine.id);
+      if (isSelected) {
+        return prev.filter((w) => w.id !== wine.id);
+      } else {
+        return [...prev, wine];
+      }
+    });
+  };
+
+  const handleCreateMenu = () => {
+    // Store selected wines in sessionStorage for the share-menu page
+    sessionStorage.setItem("menuWines", JSON.stringify(selectedWines));
+    router.push("/share-menu");
+  };
+
   if (authLoading || checkingRedirect) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wine-50">
@@ -139,6 +171,27 @@ export default function CellarPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Wine Menu Selection Toggle */}
+              <button
+                onClick={toggleSelectionMode}
+                className={`p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wine-500 relative ${
+                  isSelectionMode
+                    ? "bg-wine-100 text-wine-600"
+                    : "hover:bg-gray-100 text-gray-600"
+                }`}
+                aria-label={isSelectionMode ? "Exit selection mode" : "Select wines for dinner menu"}
+              >
+                {isSelectionMode ? (
+                  <X className="w-5 h-5" aria-hidden="true" />
+                ) : (
+                  <ListChecks className="w-5 h-5" aria-hidden="true" />
+                )}
+                {selectedWines.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-wine-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {selectedWines.length}
+                  </span>
+                )}
+              </button>
               <Link
                 href="/stats"
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wine-500"
@@ -196,6 +249,34 @@ export default function CellarPage() {
           />
         </div>
 
+        {/* Selection Mode Banner */}
+        {isSelectionMode && (
+          <div className="mb-4 bg-wine-50 border border-wine-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ListChecks className="w-5 h-5 text-wine-600" />
+              <div>
+                <p className="font-medium text-wine-900">
+                  {selectedWines.length === 0
+                    ? "Välj viner till din middagsmeny"
+                    : `${selectedWines.length} vin${selectedWines.length !== 1 ? "er" : ""} vald${selectedWines.length !== 1 ? "a" : "t"}`}
+                </p>
+                <p className="text-sm text-wine-600">
+                  Tryck på viner för att välja dem
+                </p>
+              </div>
+            </div>
+            {selectedWines.length > 0 && (
+              <button
+                onClick={handleCreateMenu}
+                className="flex items-center gap-2 bg-wine-600 hover:bg-wine-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                <Utensils className="w-4 h-4" />
+                Skapa meny
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Wine List */}
         <WineList
           wines={wines}
@@ -204,6 +285,9 @@ export default function CellarPage() {
           isFilterActive={!!(filters.search || filters.grapeVariety || filters.country || filters.region || filters.storageLocation)}
           onAddWine={() => setShowAddModal(true)}
           onClearFilters={() => setFilters({})}
+          isSelectionMode={isSelectionMode}
+          selectedWineIds={selectedWines.map((w) => w.id)}
+          onToggleSelect={toggleWineSelection}
         />
       </main>
 

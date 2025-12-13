@@ -12,6 +12,9 @@ interface WineListProps {
   isFilterActive?: boolean;
   onAddWine?: () => void;
   onClearFilters?: () => void;
+  isSelectionMode?: boolean;
+  selectedWineIds?: string[];
+  onToggleSelect?: (wine: Wine) => void;
 }
 
 export default function WineList({
@@ -21,6 +24,9 @@ export default function WineList({
   isFilterActive = false,
   onAddWine,
   onClearFilters,
+  isSelectionMode = false,
+  selectedWineIds = [],
+  onToggleSelect,
 }: WineListProps) {
   if (loading) {
     return (
@@ -89,7 +95,13 @@ export default function WineList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {wines.map((wine) => (
-        <WineCard key={wine.id} wine={wine} />
+        <WineCard
+          key={wine.id}
+          wine={wine}
+          isSelectionMode={isSelectionMode}
+          isSelected={selectedWineIds.includes(wine.id)}
+          onToggleSelect={onToggleSelect}
+        />
       ))}
     </div>
   );

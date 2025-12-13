@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
@@ -80,6 +80,16 @@ if (typeof window !== 'undefined') {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+
+  // Explicitly set auth persistence to local storage
+  // This ensures the session persists across browser restarts and tabs
+  // Firebase ID tokens expire after 1 hour, but the SDK automatically refreshes them
+  // using the refresh token stored in IndexedDB/localStorage
+  if (auth) {
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error('[Firebase] Failed to set auth persistence:', error);
+    });
+  }
 
   // Log successful initialization in development
   if (process.env.NODE_ENV === 'development') {

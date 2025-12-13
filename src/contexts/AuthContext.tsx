@@ -17,6 +17,7 @@ import {
   signInWithPopup,
   updateProfile,
   sendPasswordResetEmail,
+  getIdToken,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -68,8 +69,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
+    // Proactive token refresh every 55 minutes (tokens expire after 1 hour)
+    // This prevents session timeout issues during long active sessions
+    const TOKEN_REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes
+    const tokenRefreshInterval = setInterval(async () => {
+      if (auth?.currentUser) {
+        try {
+          await getIdToken(auth.currentUser, true); // Force token refresh
+          debugLog('[Auth] Token refreshed proactively');
+        } catch (error) {
+          console.error('[Auth] Token refresh failed:', error);
+        }
+      }
+    }, TOKEN_REFRESH_INTERVAL);
+
+    // Refresh token when user returns to the tab after being away
+    // This handles cases where the user left the app open for hours
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && auth?.currentUser) {
+        try {
+          await getIdToken(auth.currentUser, true); // Force token refresh
+          debugLog('[Auth] Token refreshed on visibility change');
+        } catch (error) {
+          console.error('[Auth] Token refresh on visibility change failed:', error);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       unsubscribe();
+      clearInterval(tokenRefreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

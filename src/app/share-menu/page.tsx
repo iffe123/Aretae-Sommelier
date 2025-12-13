@@ -54,22 +54,45 @@ export default function ShareMenuPage() {
     setIsGenerating(true);
     setError(null);
     try {
+      // Small delay to ensure DOM is fully rendered
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(menuRef.current, {
         backgroundColor: "#1f2937", // Fallback background color
         scale: 2, // Higher quality
         useCORS: true,
         logging: false,
-        allowTaint: true,
+        // Note: allowTaint removed as it can cause toBlob to fail due to canvas security restrictions
       });
 
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("Failed to create image blob"));
-          }
-        }, "image/png", 1.0);
+      // Try toBlob first, fall back to toDataURL if it fails
+      return new Promise((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              // Fallback: convert dataURL to blob
+              try {
+                const dataURL = canvas.toDataURL("image/png");
+                const byteString = atob(dataURL.split(",")[1]);
+                const mimeString = dataURL.split(",")[0].split(":")[1].split(";")[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                  ia[i] = byteString.charCodeAt(i);
+                }
+                const fallbackBlob = new Blob([ab], { type: mimeString });
+                resolve(fallbackBlob);
+              } catch (fallbackError) {
+                console.error("Fallback blob creation failed:", fallbackError);
+                resolve(null);
+              }
+            }
+          },
+          "image/png",
+          1.0
+        );
       });
     } catch (error) {
       console.error("Failed to generate image:", error);

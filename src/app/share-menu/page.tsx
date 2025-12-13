@@ -27,6 +27,7 @@ export default function ShareMenuPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load wines from sessionStorage
@@ -45,24 +46,34 @@ export default function ShareMenuPage() {
   }, [router]);
 
   const generateImage = async (): Promise<Blob | null> => {
-    if (!menuRef.current) return null;
+    if (!menuRef.current) {
+      setError("Kunde inte hitta menyn. Försök ladda om sidan.");
+      return null;
+    }
 
     setIsGenerating(true);
+    setError(null);
     try {
       const canvas = await html2canvas(menuRef.current, {
-        backgroundColor: null,
+        backgroundColor: "#1f2937", // Fallback background color
         scale: 2, // Higher quality
         useCORS: true,
         logging: false,
+        allowTaint: true,
       });
 
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
-          resolve(blob);
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to create image blob"));
+          }
         }, "image/png", 1.0);
       });
     } catch (error) {
       console.error("Failed to generate image:", error);
+      setError("Kunde inte skapa bilden. Försök igen.");
       return null;
     } finally {
       setIsGenerating(false);
@@ -70,62 +81,79 @@ export default function ShareMenuPage() {
   };
 
   const handleDownload = async () => {
-    const blob = await generateImage();
-    if (!blob) return;
+    try {
+      const blob = await generateImage();
+      if (!blob) return;
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, "-")}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.toLowerCase().replace(/\s+/g, "-")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      setError("Nedladdningen misslyckades. Försök igen.");
+    }
   };
 
   const handleShare = async () => {
-    const blob = await generateImage();
-    if (!blob) return;
+    try {
+      const blob = await generateImage();
+      if (!blob) return;
 
-    const file = new File([blob], `${title}.png`, { type: "image/png" });
+      const file = new File([blob], `${title}.png`, { type: "image/png" });
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          title: title,
-          text: greeting || "Se vilka viner vi serverar ikväll!",
-          files: [file],
-        });
-        setShowShareSuccess(true);
-        setTimeout(() => setShowShareSuccess(false), 2000);
-      } catch (error) {
-        // User cancelled or share failed, try fallback
-        if ((error as Error).name !== "AbortError") {
-          handleDownload();
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: title,
+            text: greeting || "Se vilka viner vi serverar ikväll!",
+            files: [file],
+          });
+          setShowShareSuccess(true);
+          setTimeout(() => setShowShareSuccess(false), 2000);
+        } catch (shareError) {
+          // User cancelled or share failed, try fallback
+          if ((shareError as Error).name !== "AbortError") {
+            handleDownload();
+          }
         }
+      } else {
+        // Fallback to download
+        handleDownload();
       }
-    } else {
-      // Fallback to download
-      handleDownload();
+    } catch (err) {
+      console.error("Share failed:", err);
+      setError("Delningen misslyckades. Försök igen.");
     }
   };
 
   const handleCopyToClipboard = async () => {
-    const blob = await generateImage();
-    if (!blob) return;
-
     try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "image/png": blob,
-        }),
-      ]);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy to clipboard:", error);
-      // Fallback to download
-      handleDownload();
+      const blob = await generateImage();
+      if (!blob) return;
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "image/png": blob,
+          }),
+        ]);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (clipboardError) {
+        console.error("Failed to copy to clipboard:", clipboardError);
+        // Fallback to download
+        setError("Kunde inte kopiera till urklipp. Laddar ner istället...");
+        setTimeout(() => setError(null), 2000);
+        handleDownload();
+      }
+    } catch (err) {
+      console.error("Copy failed:", err);
+      setError("Kopieringen misslyckades. Försök igen.");
     }
   };
 
@@ -190,6 +218,16 @@ export default function ShareMenuPage() {
       {showShareSuccess && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in">
           Delat!
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {error && (
+        <div
+          className="fixed top-20 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in cursor-pointer"
+          onClick={() => setError(null)}
+        >
+          {error}
         </div>
       )}
 

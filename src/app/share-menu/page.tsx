@@ -45,6 +45,25 @@ export default function ShareMenuPage() {
     }
   }, [router]);
 
+  // Helper function to convert SVG to data URL for html2canvas compatibility
+  const svgToDataURL = (svg: SVGElement): string => {
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    return URL.createObjectURL(svgBlob);
+  };
+
+  // Helper function to convert dataURL to Blob
+  const dataURLToBlob = (dataURL: string): Blob => {
+    const byteString = atob(dataURL.split(",")[1]);
+    const mimeString = dataURL.split(",")[0].split(":")[1].split(";")[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  };
+
   const generateImage = async (): Promise<Blob | null> => {
     if (!menuRef.current) {
       setError("Kunde inte hitta menyn. Försök ladda om sidan.");
@@ -53,80 +72,124 @@ export default function ShareMenuPage() {
 
     setIsGenerating(true);
     setError(null);
+
+    // Store URLs created for cleanup
+    const createdUrls: string[] = [];
+
     try {
-      // Small delay to ensure DOM is fully rendered
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Wait for next frame to ensure DOM is fully rendered
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      // Additional small delay for any async rendering
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Detect mobile for reduced scale to avoid memory issues
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const scale = isMobile ? 1.5 : 2;
 
-      const canvas = await html2canvas(menuRef.current, {
-        backgroundColor: "#1f2937", // Fallback background color
-        scale: scale, // Lower scale on mobile to avoid memory issues
+      // Store reference before async operation
+      const element = menuRef.current;
+      if (!element) {
+        throw new Error("Menu element became unavailable");
+      }
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#1f2937",
+        scale: scale,
         useCORS: true,
-        logging: false,
-        // foreignObjectRendering must be false for Safari compatibility
+        allowTaint: true,
+        logging: process.env.NODE_ENV === "development",
         foreignObjectRendering: false,
-        // Set explicit dimensions to help mobile browsers
-        windowWidth: menuRef.current.scrollWidth,
-        windowHeight: menuRef.current.scrollHeight,
-        // Remove the temporary container after rendering (helps with Safari)
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
         removeContainer: true,
-        // Clone callback to handle SVG elements that can cause issues on mobile Safari
-        onclone: (_clonedDoc: Document, element: HTMLElement) => {
+        imageTimeout: 15000,
+        onclone: (_clonedDoc: Document, clonedElement: HTMLElement) => {
           try {
-            // Simply hide all SVG elements to avoid rendering issues
-            // This is more reliable than trying to replace them
-            const svgs = element.querySelectorAll("svg");
+            // Convert SVGs to img elements for better compatibility
+            const svgs = clonedElement.querySelectorAll("svg");
             svgs.forEach((svg) => {
-              svg.style.visibility = "hidden";
+              try {
+                // Get the computed dimensions
+                const rect = svg.getBoundingClientRect();
+                const width = rect.width || 24;
+                const height = rect.height || 24;
+
+                // Set explicit dimensions on SVG for serialization
+                svg.setAttribute("width", String(width));
+                svg.setAttribute("height", String(height));
+
+                // Create data URL from SVG
+                const url = svgToDataURL(svg);
+                createdUrls.push(url);
+
+                // Create img element to replace SVG
+                const img = document.createElement("img");
+                img.src = url;
+                img.width = width;
+                img.height = height;
+                img.style.cssText = svg.style.cssText;
+                img.className = svg.className.baseVal || "";
+
+                // Replace SVG with img
+                if (svg.parentNode) {
+                  svg.parentNode.replaceChild(img, svg);
+                }
+              } catch (svgError) {
+                // If conversion fails, just hide the SVG
+                console.warn("SVG conversion failed, hiding:", svgError);
+                svg.style.visibility = "hidden";
+              }
             });
           } catch (e) {
-            // Ignore errors in clone callback to not break the capture
             console.warn("onclone error (ignored):", e);
           }
         },
       });
 
-      // Try toBlob first, fall back to toDataURL if it fails
-      return new Promise((resolve) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              // Fallback: convert dataURL to blob
-              try {
-                const dataURL = canvas.toDataURL("image/png");
-                const byteString = atob(dataURL.split(",")[1]);
-                const mimeString = dataURL.split(",")[0].split(":")[1].split(";")[0];
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                  ia[i] = byteString.charCodeAt(i);
-                }
-                const fallbackBlob = new Blob([ab], { type: mimeString });
-                resolve(fallbackBlob);
-              } catch (fallbackError) {
-                console.error("Fallback blob creation failed:", fallbackError);
-                resolve(null);
-              }
-            }
-          },
-          "image/png",
-          1.0
-        );
-      });
+      // Convert canvas to blob with fallback
+      let blob: Blob | null = null;
+
+      // Try toBlob first (preferred method)
+      try {
+        blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(
+            (result) => resolve(result),
+            "image/png",
+            1.0
+          );
+        });
+      } catch (toBlobError) {
+        console.warn("toBlob failed, trying dataURL fallback:", toBlobError);
+      }
+
+      // Fallback to dataURL if toBlob failed or returned null
+      if (!blob) {
+        try {
+          const dataURL = canvas.toDataURL("image/png");
+          blob = dataURLToBlob(dataURL);
+        } catch (dataURLError) {
+          console.error("dataURL fallback failed:", dataURLError);
+          throw new Error("Could not convert canvas to image");
+        }
+      }
+
+      return blob;
     } catch (error) {
       console.error("Failed to generate image:", error);
-      // Log more details for debugging
       if (error instanceof Error) {
         console.error("Error details:", error.message, error.stack);
       }
       setError("Kunde inte skapa bilden. Försök igen.");
       return null;
     } finally {
+      // Cleanup created URLs
+      createdUrls.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore cleanup errors
+        }
+      });
       setIsGenerating(false);
     }
   };

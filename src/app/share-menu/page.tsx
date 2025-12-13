@@ -64,8 +64,116 @@ export default function ShareMenuPage() {
     return new Blob([ab], { type: mimeString });
   };
 
+  // Manual Canvas API fallback for when html2canvas fails
+  const createMenuImageManually = (): string => {
+    console.log("[MANUAL] Starting manual canvas generation");
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No canvas context");
+
+    // Set canvas size
+    canvas.width = 800;
+    canvas.height = 280 + wines.length * 160;
+
+    // Background gradient
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "#111827");
+    gradient.addColorStop(0.5, "#1f2937");
+    gradient.addColorStop(1, "#4a1d2e");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Decorative line and wine icon placeholder
+    ctx.strokeStyle = "#a855a0";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(280, 50);
+    ctx.lineTo(340, 50);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(460, 50);
+    ctx.lineTo(520, 50);
+    ctx.stroke();
+
+    // Wine glass icon (simple)
+    ctx.fillStyle = "#a855a0";
+    ctx.beginPath();
+    ctx.arc(400, 50, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Title
+    ctx.fillStyle = "#e8c4c4";
+    ctx.font = "bold 36px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(title || "Kvällens viner", canvas.width / 2, 110);
+
+    // Greeting
+    if (greeting) {
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "italic 18px Georgia, serif";
+      ctx.fillText(greeting, canvas.width / 2, 150);
+    }
+
+    // Wines
+    wines.forEach((wine, index) => {
+      const y = 220 + index * 150;
+
+      // Wine name
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 24px Georgia, serif";
+      ctx.textAlign = "left";
+      ctx.fillText(wine.name, 50, y);
+
+      // Vintage
+      ctx.fillStyle = "#e8c4c4";
+      ctx.font = "300 28px Georgia, serif";
+      ctx.textAlign = "right";
+      ctx.fillText(wine.vintage?.toString() || "", canvas.width - 50, y);
+
+      // Winery
+      ctx.fillStyle = "#d4a5a5";
+      ctx.font = "18px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(wine.winery || "", 50, y + 30);
+
+      // Details (grape and region)
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "14px sans-serif";
+      const details = [wine.grapeVariety, wine.region].filter(Boolean).join(" • ");
+      ctx.fillText(details, 50, y + 55);
+
+      // Wine number
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(`VIN ${index + 1}`, 50, y + 85);
+
+      // Separator line
+      ctx.strokeStyle = "#374151";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(110, y + 85);
+      ctx.lineTo(canvas.width - 50, y + 85);
+      ctx.stroke();
+    });
+
+    // Footer
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.letterSpacing = "3px";
+    ctx.fillText("SKAPAD MED ARETAE SOMMELIER", canvas.width / 2, canvas.height - 30);
+
+    console.log("[MANUAL] Canvas created:", canvas.width, "x", canvas.height);
+    return canvas.toDataURL("image/png");
+  };
+
   const generateImage = async (): Promise<Blob | null> => {
+    console.log("[IMAGE-GEN] ========= START =========");
+    console.log("[IMAGE-GEN] 1. menuRef.current:", menuRef.current);
+    console.log("[IMAGE-GEN] 2. User Agent:", navigator.userAgent);
+
     if (!menuRef.current) {
+      console.error("[IMAGE-GEN] ERROR: No menuRef.current!");
       setError("Kunde inte hitta menyn. Försök ladda om sidan.");
       return null;
     }
@@ -84,7 +192,7 @@ export default function ShareMenuPage() {
 
       // Detect mobile for reduced scale to avoid memory issues
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const scale = isMobile ? 1.5 : 2;
+      const scale = isMobile ? 1 : 2; // Lower scale on mobile
 
       // Store reference before async operation
       const element = menuRef.current;
@@ -92,95 +200,149 @@ export default function ShareMenuPage() {
         throw new Error("Menu element became unavailable");
       }
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: "#1f2937",
-        scale: scale,
-        useCORS: true,
-        allowTaint: true,
-        logging: process.env.NODE_ENV === "development",
-        foreignObjectRendering: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        removeContainer: true,
-        imageTimeout: 15000,
-        onclone: (_clonedDoc: Document, clonedElement: HTMLElement) => {
-          try {
-            // Convert SVGs to img elements for better compatibility
-            const svgs = clonedElement.querySelectorAll("svg");
-            svgs.forEach((svg) => {
-              try {
-                // Get the computed dimensions
-                const rect = svg.getBoundingClientRect();
-                const width = rect.width || 24;
-                const height = rect.height || 24;
+      console.log("[IMAGE-GEN] 3. Element dimensions:", element.offsetWidth, "x", element.offsetHeight);
+      console.log("[IMAGE-GEN] 4. Element scroll dimensions:", element.scrollWidth, "x", element.scrollHeight);
+      console.log("[IMAGE-GEN] 5. Is mobile:", isMobile, "Scale:", scale);
 
-                // Set explicit dimensions on SVG for serialization
-                svg.setAttribute("width", String(width));
-                svg.setAttribute("height", String(height));
+      console.log("[IMAGE-GEN] 6. Starting html2canvas...");
 
-                // Create data URL from SVG
-                const url = svgToDataURL(svg);
-                createdUrls.push(url);
+      let canvas: HTMLCanvasElement;
 
-                // Create img element to replace SVG
-                const img = document.createElement("img");
-                img.src = url;
-                img.width = width;
-                img.height = height;
-                img.style.cssText = svg.style.cssText;
-                img.className = svg.className.baseVal || "";
+      try {
+        canvas = await html2canvas(element, {
+          backgroundColor: "#1f2937",
+          scale: scale,
+          useCORS: true,
+          allowTaint: true,
+          logging: true, // Always enable logging
+          foreignObjectRendering: false,
+          windowWidth: element.scrollWidth,
+          windowHeight: element.scrollHeight,
+          removeContainer: true,
+          imageTimeout: 15000,
+          onclone: (_clonedDoc: Document, clonedElement: HTMLElement) => {
+            console.log("[IMAGE-GEN] 7. onclone called");
+            try {
+              // Convert SVGs to img elements for better compatibility
+              const svgs = clonedElement.querySelectorAll("svg");
+              console.log("[IMAGE-GEN] 8. Found SVGs:", svgs.length);
 
-                // Replace SVG with img
-                if (svg.parentNode) {
-                  svg.parentNode.replaceChild(img, svg);
+              svgs.forEach((svg, idx) => {
+                try {
+                  // Get the computed dimensions
+                  const rect = svg.getBoundingClientRect();
+                  const width = rect.width || 24;
+                  const height = rect.height || 24;
+
+                  // Set explicit dimensions on SVG for serialization
+                  svg.setAttribute("width", String(width));
+                  svg.setAttribute("height", String(height));
+
+                  // Create data URL from SVG
+                  const url = svgToDataURL(svg);
+                  createdUrls.push(url);
+
+                  // Create img element to replace SVG
+                  const img = document.createElement("img");
+                  img.src = url;
+                  img.width = width;
+                  img.height = height;
+                  img.style.cssText = svg.style.cssText;
+                  img.className = svg.className.baseVal || "";
+
+                  // Replace SVG with img
+                  if (svg.parentNode) {
+                    svg.parentNode.replaceChild(img, svg);
+                  }
+                  console.log(`[IMAGE-GEN] 9. SVG ${idx} converted successfully`);
+                } catch (svgError) {
+                  // If conversion fails, just hide the SVG
+                  console.warn(`[IMAGE-GEN] SVG ${idx} conversion failed:`, svgError);
+                  svg.style.visibility = "hidden";
                 }
-              } catch (svgError) {
-                // If conversion fails, just hide the SVG
-                console.warn("SVG conversion failed, hiding:", svgError);
-                svg.style.visibility = "hidden";
-              }
-            });
-          } catch (e) {
-            console.warn("onclone error (ignored):", e);
-          }
-        },
-      });
+              });
+            } catch (e) {
+              console.warn("[IMAGE-GEN] onclone error (ignored):", e);
+            }
+          },
+        });
+        console.log("[IMAGE-GEN] 10. html2canvas SUCCESS! Canvas:", canvas.width, "x", canvas.height);
+      } catch (html2canvasError) {
+        console.error("[IMAGE-GEN] html2canvas FAILED:", html2canvasError);
+        console.error("[IMAGE-GEN] Error name:", (html2canvasError as Error).name);
+        console.error("[IMAGE-GEN] Error message:", (html2canvasError as Error).message);
+        console.error("[IMAGE-GEN] Error stack:", (html2canvasError as Error).stack);
+
+        // Try manual fallback
+        console.log("[IMAGE-GEN] Trying manual Canvas API fallback...");
+        const manualDataUrl = createMenuImageManually();
+        console.log("[IMAGE-GEN] Manual fallback dataURL length:", manualDataUrl.length);
+        return dataURLToBlob(manualDataUrl);
+      }
 
       // Convert canvas to blob with fallback
       let blob: Blob | null = null;
 
       // Try toBlob first (preferred method)
+      console.log("[IMAGE-GEN] 11. Converting canvas to blob...");
       try {
-        blob = await new Promise<Blob | null>((resolve) => {
+        blob = await new Promise<Blob | null>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            console.warn("[IMAGE-GEN] toBlob timeout after 5s");
+            reject(new Error("toBlob timeout"));
+          }, 5000);
+
           canvas.toBlob(
-            (result) => resolve(result),
+            (result) => {
+              clearTimeout(timeoutId);
+              console.log("[IMAGE-GEN] 12. toBlob result:", result ? `Blob ${result.size} bytes` : "null");
+              resolve(result);
+            },
             "image/png",
             1.0
           );
         });
       } catch (toBlobError) {
-        console.warn("toBlob failed, trying dataURL fallback:", toBlobError);
+        console.warn("[IMAGE-GEN] toBlob failed:", toBlobError);
       }
 
       // Fallback to dataURL if toBlob failed or returned null
       if (!blob) {
+        console.log("[IMAGE-GEN] 13. Trying dataURL fallback...");
         try {
           const dataURL = canvas.toDataURL("image/png");
+          console.log("[IMAGE-GEN] 14. dataURL length:", dataURL.length);
           blob = dataURLToBlob(dataURL);
+          console.log("[IMAGE-GEN] 15. dataURL blob size:", blob.size);
         } catch (dataURLError) {
-          console.error("dataURL fallback failed:", dataURLError);
-          throw new Error("Could not convert canvas to image");
+          console.error("[IMAGE-GEN] dataURL fallback failed:", dataURLError);
+
+          // Ultimate fallback - manual canvas
+          console.log("[IMAGE-GEN] 16. Trying manual canvas fallback...");
+          const manualDataUrl = createMenuImageManually();
+          return dataURLToBlob(manualDataUrl);
         }
       }
 
+      console.log("[IMAGE-GEN] ========= SUCCESS =========");
       return blob;
     } catch (error) {
-      console.error("Failed to generate image:", error);
-      if (error instanceof Error) {
-        console.error("Error details:", error.message, error.stack);
+      console.error("[IMAGE-GEN] ========= FATAL ERROR =========");
+      console.error("[IMAGE-GEN] Error:", error);
+      console.error("[IMAGE-GEN] Error name:", (error as Error).name);
+      console.error("[IMAGE-GEN] Error message:", (error as Error).message);
+      console.error("[IMAGE-GEN] Error stack:", (error as Error).stack);
+
+      // Last resort - try manual fallback even on fatal error
+      try {
+        console.log("[IMAGE-GEN] Last resort: manual canvas fallback...");
+        const manualDataUrl = createMenuImageManually();
+        return dataURLToBlob(manualDataUrl);
+      } catch (manualError) {
+        console.error("[IMAGE-GEN] Manual fallback also failed:", manualError);
+        setError("Kunde inte skapa bilden. Försök igen.");
+        return null;
       }
-      setError("Kunde inte skapa bilden. Försök igen.");
-      return null;
     } finally {
       // Cleanup created URLs
       createdUrls.forEach((url) => {

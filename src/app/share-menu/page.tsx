@@ -460,22 +460,22 @@ export default function ShareMenuPage() {
               <button
                 onClick={handleCopyToClipboard}
                 disabled={isGenerating}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                 title="Kopiera bild"
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-green-600" />
                 ) : (
-                  <Copy className="w-5 h-5 text-gray-600" />
+                  <Copy className="w-5 h-5" />
                 )}
               </button>
               <button
                 onClick={handleDownload}
                 disabled={isGenerating}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors disabled:opacity-50"
                 title="Ladda ner bild"
               >
-                <Download className="w-5 h-5 text-gray-600" />
+                <Download className="w-5 h-5" />
               </button>
               <button
                 onClick={handleShare}

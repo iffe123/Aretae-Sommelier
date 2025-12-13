@@ -55,14 +55,38 @@ export default function ShareMenuPage() {
     setError(null);
     try {
       // Small delay to ensure DOM is fully rendered
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Detect mobile for reduced scale to avoid memory issues
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const scale = isMobile ? 1.5 : 2;
 
       const canvas = await html2canvas(menuRef.current, {
         backgroundColor: "#1f2937", // Fallback background color
-        scale: 2, // Higher quality
+        scale: scale, // Lower scale on mobile to avoid memory issues
         useCORS: true,
         logging: false,
-        // Note: allowTaint removed as it can cause toBlob to fail due to canvas security restrictions
+        // foreignObjectRendering must be false for Safari compatibility
+        foreignObjectRendering: false,
+        // Set explicit dimensions to help mobile browsers
+        windowWidth: menuRef.current.scrollWidth,
+        windowHeight: menuRef.current.scrollHeight,
+        // Remove the temporary container after rendering (helps with Safari)
+        removeContainer: true,
+        // Clone callback to handle SVG elements that can cause issues on mobile Safari
+        onclone: (_clonedDoc: Document, element: HTMLElement) => {
+          try {
+            // Simply hide all SVG elements to avoid rendering issues
+            // This is more reliable than trying to replace them
+            const svgs = element.querySelectorAll("svg");
+            svgs.forEach((svg) => {
+              svg.style.visibility = "hidden";
+            });
+          } catch (e) {
+            // Ignore errors in clone callback to not break the capture
+            console.warn("onclone error (ignored):", e);
+          }
+        },
       });
 
       // Try toBlob first, fall back to toDataURL if it fails
@@ -96,6 +120,10 @@ export default function ShareMenuPage() {
       });
     } catch (error) {
       console.error("Failed to generate image:", error);
+      // Log more details for debugging
+      if (error instanceof Error) {
+        console.error("Error details:", error.message, error.stack);
+      }
       setError("Kunde inte skapa bilden. Försök igen.");
       return null;
     } finally {

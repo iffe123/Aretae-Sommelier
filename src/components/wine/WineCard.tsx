@@ -94,13 +94,13 @@ export default function WineCard({
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          {wine.rating ? (
+          {wine.rating != null && wine.rating > 0 ? (
             <StarRating rating={wine.rating} size="sm" readonly />
           ) : (
             <span className="text-xs text-gray-400">Not rated</span>
           )}
           <span className="text-sm font-medium text-gray-900">
-            {wine.price.toFixed(0)} kr
+            {wine.price != null ? `${wine.price.toFixed(0)} kr` : "—"}
           </span>
         </div>
 

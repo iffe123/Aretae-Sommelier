@@ -62,7 +62,7 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
     {
       icon: DollarSign,
       label: "Price",
-      value: `${wine.price.toFixed(0)} kr`,
+      value: wine.price != null ? `${wine.price.toFixed(0)} kr` : "—",
     },
     {
       icon: Package,
@@ -102,8 +102,9 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
           <button
             onClick={() => router.back()}
             className="absolute top-4 left-4 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-colors"
+            aria-label="Go back"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <ArrowLeft className="w-5 h-5 text-gray-700" aria-hidden="true" />
           </button>
 
           {/* Wishlist Badge */}

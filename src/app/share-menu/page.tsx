@@ -20,7 +20,7 @@ export default function ShareMenuPage() {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
   const [wines, setWines] = useState<Wine[]>([]);
-  const [title, setTitle] = useState("Kvällens viner");
+  const [title, setTitle] = useState("Tonight's Wines");
   const [greeting, setGreeting] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingGreeting, setIsEditingGreeting] = useState(false);
@@ -66,7 +66,6 @@ export default function ShareMenuPage() {
 
   // Manual Canvas API fallback for when html2canvas fails
   const createMenuImageManually = (): string => {
-    console.log("[MANUAL] Starting manual canvas generation");
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("No canvas context");
@@ -105,7 +104,7 @@ export default function ShareMenuPage() {
     ctx.fillStyle = "#e8c4c4";
     ctx.font = "bold 36px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText(title || "Kvällens viner", canvas.width / 2, 110);
+    ctx.fillText(title || "Tonight's Wines", canvas.width / 2, 110);
 
     // Greeting
     if (greeting) {
@@ -145,7 +144,7 @@ export default function ShareMenuPage() {
       // Wine number
       ctx.fillStyle = "#6b7280";
       ctx.font = "12px sans-serif";
-      ctx.fillText(`VIN ${index + 1}`, 50, y + 85);
+      ctx.fillText(`WINE ${index + 1}`, 50, y + 85);
 
       // Separator line
       ctx.strokeStyle = "#374151";
@@ -161,20 +160,14 @@ export default function ShareMenuPage() {
     ctx.font = "12px sans-serif";
     ctx.textAlign = "center";
     ctx.letterSpacing = "3px";
-    ctx.fillText("SKAPAD MED ARETAE SOMMELIER", canvas.width / 2, canvas.height - 30);
+    ctx.fillText("CREATED WITH ARETAE SOMMELIER", canvas.width / 2, canvas.height - 30);
 
-    console.log("[MANUAL] Canvas created:", canvas.width, "x", canvas.height);
     return canvas.toDataURL("image/png");
   };
 
   const generateImage = async (): Promise<Blob | null> => {
-    console.log("[IMAGE-GEN] ========= START =========");
-    console.log("[IMAGE-GEN] 1. menuRef.current:", menuRef.current);
-    console.log("[IMAGE-GEN] 2. User Agent:", navigator.userAgent);
-
     if (!menuRef.current) {
-      console.error("[IMAGE-GEN] ERROR: No menuRef.current!");
-      setError("Kunde inte hitta menyn. Försök ladda om sidan.");
+      setError("Could not find the menu. Please reload the page.");
       return null;
     }
 
@@ -200,12 +193,6 @@ export default function ShareMenuPage() {
         throw new Error("Menu element became unavailable");
       }
 
-      console.log("[IMAGE-GEN] 3. Element dimensions:", element.offsetWidth, "x", element.offsetHeight);
-      console.log("[IMAGE-GEN] 4. Element scroll dimensions:", element.scrollWidth, "x", element.scrollHeight);
-      console.log("[IMAGE-GEN] 5. Is mobile:", isMobile, "Scale:", scale);
-
-      console.log("[IMAGE-GEN] 6. Starting html2canvas...");
-
       let canvas: HTMLCanvasElement;
 
       try {
@@ -214,20 +201,18 @@ export default function ShareMenuPage() {
           scale: scale,
           useCORS: true,
           allowTaint: true,
-          logging: true, // Always enable logging
+          logging: false,
           foreignObjectRendering: false,
           windowWidth: element.scrollWidth,
           windowHeight: element.scrollHeight,
           removeContainer: true,
           imageTimeout: 15000,
           onclone: (_clonedDoc: Document, clonedElement: HTMLElement) => {
-            console.log("[IMAGE-GEN] 7. onclone called");
             try {
               // Convert SVGs to img elements for better compatibility
               const svgs = clonedElement.querySelectorAll("svg");
-              console.log("[IMAGE-GEN] 8. Found SVGs:", svgs.length);
 
-              svgs.forEach((svg, idx) => {
+              svgs.forEach((svg) => {
                 try {
                   // Get the computed dimensions
                   const rect = svg.getBoundingClientRect();
@@ -254,29 +239,19 @@ export default function ShareMenuPage() {
                   if (svg.parentNode) {
                     svg.parentNode.replaceChild(img, svg);
                   }
-                  console.log(`[IMAGE-GEN] 9. SVG ${idx} converted successfully`);
-                } catch (svgError) {
+                } catch {
                   // If conversion fails, just hide the SVG
-                  console.warn(`[IMAGE-GEN] SVG ${idx} conversion failed:`, svgError);
                   svg.style.visibility = "hidden";
                 }
               });
-            } catch (e) {
-              console.warn("[IMAGE-GEN] onclone error (ignored):", e);
+            } catch {
+              // Ignore onclone errors
             }
           },
         });
-        console.log("[IMAGE-GEN] 10. html2canvas SUCCESS! Canvas:", canvas.width, "x", canvas.height);
-      } catch (html2canvasError) {
-        console.error("[IMAGE-GEN] html2canvas FAILED:", html2canvasError);
-        console.error("[IMAGE-GEN] Error name:", (html2canvasError as Error).name);
-        console.error("[IMAGE-GEN] Error message:", (html2canvasError as Error).message);
-        console.error("[IMAGE-GEN] Error stack:", (html2canvasError as Error).stack);
-
-        // Try manual fallback
-        console.log("[IMAGE-GEN] Trying manual Canvas API fallback...");
+      } catch {
+        // html2canvas failed, try manual fallback
         const manualDataUrl = createMenuImageManually();
-        console.log("[IMAGE-GEN] Manual fallback dataURL length:", manualDataUrl.length);
         return dataURLToBlob(manualDataUrl);
       }
 
@@ -284,63 +259,45 @@ export default function ShareMenuPage() {
       let blob: Blob | null = null;
 
       // Try toBlob first (preferred method)
-      console.log("[IMAGE-GEN] 11. Converting canvas to blob...");
       try {
         blob = await new Promise<Blob | null>((resolve, reject) => {
           const timeoutId = setTimeout(() => {
-            console.warn("[IMAGE-GEN] toBlob timeout after 5s");
             reject(new Error("toBlob timeout"));
           }, 5000);
 
           canvas.toBlob(
             (result) => {
               clearTimeout(timeoutId);
-              console.log("[IMAGE-GEN] 12. toBlob result:", result ? `Blob ${result.size} bytes` : "null");
               resolve(result);
             },
             "image/png",
             1.0
           );
         });
-      } catch (toBlobError) {
-        console.warn("[IMAGE-GEN] toBlob failed:", toBlobError);
+      } catch {
+        // toBlob failed, will try dataURL fallback
       }
 
       // Fallback to dataURL if toBlob failed or returned null
       if (!blob) {
-        console.log("[IMAGE-GEN] 13. Trying dataURL fallback...");
         try {
           const dataURL = canvas.toDataURL("image/png");
-          console.log("[IMAGE-GEN] 14. dataURL length:", dataURL.length);
           blob = dataURLToBlob(dataURL);
-          console.log("[IMAGE-GEN] 15. dataURL blob size:", blob.size);
-        } catch (dataURLError) {
-          console.error("[IMAGE-GEN] dataURL fallback failed:", dataURLError);
-
+        } catch {
           // Ultimate fallback - manual canvas
-          console.log("[IMAGE-GEN] 16. Trying manual canvas fallback...");
           const manualDataUrl = createMenuImageManually();
           return dataURLToBlob(manualDataUrl);
         }
       }
 
-      console.log("[IMAGE-GEN] ========= SUCCESS =========");
       return blob;
-    } catch (error) {
-      console.error("[IMAGE-GEN] ========= FATAL ERROR =========");
-      console.error("[IMAGE-GEN] Error:", error);
-      console.error("[IMAGE-GEN] Error name:", (error as Error).name);
-      console.error("[IMAGE-GEN] Error message:", (error as Error).message);
-      console.error("[IMAGE-GEN] Error stack:", (error as Error).stack);
-
+    } catch {
       // Last resort - try manual fallback even on fatal error
       try {
-        console.log("[IMAGE-GEN] Last resort: manual canvas fallback...");
         const manualDataUrl = createMenuImageManually();
         return dataURLToBlob(manualDataUrl);
-      } catch (manualError) {
-        console.error("[IMAGE-GEN] Manual fallback also failed:", manualError);
-        setError("Kunde inte skapa bilden. Försök igen.");
+      } catch {
+        setError("Could not create image. Please try again.");
         return null;
       }
     } finally {
@@ -371,7 +328,7 @@ export default function ShareMenuPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download failed:", err);
-      setError("Nedladdningen misslyckades. Försök igen.");
+      setError("Download failed. Please try again.");
     }
   };
 
@@ -386,7 +343,7 @@ export default function ShareMenuPage() {
         try {
           await navigator.share({
             title: title,
-            text: greeting || "Se vilka viner vi serverar ikväll!",
+            text: greeting || "Check out the wines we're serving tonight!",
             files: [file],
           });
           setShowShareSuccess(true);
@@ -403,7 +360,7 @@ export default function ShareMenuPage() {
       }
     } catch (err) {
       console.error("Share failed:", err);
-      setError("Delningen misslyckades. Försök igen.");
+      setError("Sharing failed. Please try again.");
     }
   };
 
@@ -423,13 +380,13 @@ export default function ShareMenuPage() {
       } catch (clipboardError) {
         console.error("Failed to copy to clipboard:", clipboardError);
         // Fallback to download
-        setError("Kunde inte kopiera till urklipp. Laddar ner istället...");
+        setError("Could not copy to clipboard. Downloading instead...");
         setTimeout(() => setError(null), 2000);
         handleDownload();
       }
     } catch (err) {
       console.error("Copy failed:", err);
-      setError("Kopieringen misslyckades. Försök igen.");
+      setError("Copy failed. Please try again.");
     }
   };
 
@@ -452,16 +409,18 @@ export default function ShareMenuPage() {
             <button
               onClick={() => router.back()}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Go back to cellar"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Tillbaka</span>
+              <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+              <span>Back</span>
             </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopyToClipboard}
                 disabled={isGenerating}
                 className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-                title="Kopiera bild"
+                title="Copy image"
+                aria-label="Copy image to clipboard"
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-green-600" />
@@ -473,17 +432,19 @@ export default function ShareMenuPage() {
                 onClick={handleDownload}
                 disabled={isGenerating}
                 className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors disabled:opacity-50"
-                title="Ladda ner bild"
+                title="Download image"
+                aria-label="Download menu as image"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-5 h-5" aria-hidden="true" />
               </button>
               <button
                 onClick={handleShare}
                 disabled={isGenerating}
                 className="flex items-center gap-2 bg-wine-600 hover:bg-wine-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                aria-label={isGenerating ? "Creating menu image" : "Share menu"}
               >
-                <Share2 className="w-4 h-4" />
-                {isGenerating ? "Skapar..." : "Dela"}
+                <Share2 className="w-4 h-4" aria-hidden="true" />
+                {isGenerating ? "Creating..." : "Share"}
               </button>
             </div>
           </div>
@@ -493,7 +454,7 @@ export default function ShareMenuPage() {
       {/* Success Toast */}
       {showShareSuccess && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in">
-          Delat!
+          Shared!
         </div>
       )}
 
@@ -510,7 +471,7 @@ export default function ShareMenuPage() {
       {/* Preview Area */}
       <main className="max-w-3xl mx-auto px-4 py-8">
         <p className="text-center text-gray-500 mb-4">
-          Förhandsvisning av din middagsmeny
+          Preview of your dinner menu
         </p>
 
         {/* Menu Card - This is what gets captured */}
@@ -557,7 +518,7 @@ export default function ShareMenuPage() {
                 value={greeting}
                 onChange={(e) => setGreeting(e.target.value)}
                 onBlur={() => setIsEditingGreeting(false)}
-                placeholder="Lägg till en personlig hälsning..."
+                placeholder="Add a personal greeting..."
                 autoFocus
                 rows={2}
                 className="bg-transparent text-gray-300 text-center w-full outline-none border-b border-gray-600 pb-2 resize-none"
@@ -567,7 +528,7 @@ export default function ShareMenuPage() {
                 className="text-gray-400 italic cursor-pointer hover:text-gray-300 transition-colors group flex items-center justify-center gap-2"
                 onClick={() => setIsEditingGreeting(true)}
               >
-                {greeting || "Tryck för att lägga till hälsning..."}
+                {greeting || "Tap to add a greeting..."}
                 <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
               </p>
             )}
@@ -612,7 +573,7 @@ export default function ShareMenuPage() {
                 {/* Wine number indicator */}
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs text-gray-500 uppercase tracking-wider">
-                    Vin {index + 1}
+                    Wine {index + 1}
                   </span>
                   <div className="flex-1 h-px bg-gray-700" />
                 </div>
@@ -623,7 +584,7 @@ export default function ShareMenuPage() {
           {/* Footer */}
           <div className="mt-10 pt-6 border-t border-gray-700 text-center">
             <p className="text-xs text-gray-500 uppercase tracking-widest">
-              Skapad med Aretae Sommelier
+              Created with Aretae Sommelier
             </p>
           </div>
         </div>
@@ -632,9 +593,9 @@ export default function ShareMenuPage() {
         <div className="mt-8 bg-white rounded-lg p-4 border border-gray-200">
           <h3 className="font-medium text-gray-900 mb-2">Tips</h3>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>- Tryck på titeln eller hälsningen för att redigera</li>
-            <li>- Använd &quot;Dela&quot;-knappen för att skicka via SMS, WhatsApp etc.</li>
-            <li>- Ladda ner som bild för att spara eller skriva ut</li>
+            <li>• Tap on the title or greeting to edit</li>
+            <li>• Use the Share button to send via SMS, WhatsApp, etc.</li>
+            <li>• Download as an image to save or print</li>
           </ul>
         </div>
       </main>

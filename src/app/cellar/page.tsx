@@ -257,11 +257,11 @@ export default function CellarPage() {
               <div>
                 <p className="font-medium text-wine-900">
                   {selectedWines.length === 0
-                    ? "Välj viner till din middagsmeny"
-                    : `${selectedWines.length} vin${selectedWines.length !== 1 ? "er" : ""} vald${selectedWines.length !== 1 ? "a" : "t"}`}
+                    ? "Select wines for your dinner menu"
+                    : `${selectedWines.length} wine${selectedWines.length !== 1 ? "s" : ""} selected`}
                 </p>
                 <p className="text-sm text-wine-600">
-                  Tryck på viner för att välja dem
+                  Tap on wines to select them
                 </p>
               </div>
             </div>
@@ -271,7 +271,7 @@ export default function CellarPage() {
                 className="flex items-center gap-2 bg-wine-600 hover:bg-wine-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 <Utensils className="w-4 h-4" />
-                Skapa meny
+                Create Menu
               </button>
             )}
           </div>

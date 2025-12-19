@@ -25,11 +25,11 @@ export interface WineFormData {
   grapeVariety: string;
   region: string;
   country: string;
-  price: number | undefined;
+  price?: number;
   photo?: File;
   rating?: number;
   tastingNotes?: string;
-  bottlesOwned: number;
+  bottlesOwned?: number;
   storageLocation?: string;
   isWishlist: boolean;
 }

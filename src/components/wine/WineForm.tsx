@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
 import StarRating from "@/components/ui/StarRating";
-import { Camera, X, Loader2, AlertCircle } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
@@ -18,6 +18,32 @@ interface WineLabelData {
   grapeVariety: string | null;
   region: string | null;
   country: string | null;
+}
+
+// Vivino wine data structure (matches lib/vivino.ts)
+interface VivinoWine {
+  id: string;
+  name: string;
+  winery: string;
+  region: string;
+  country: string;
+  grapeVariety?: string;
+  vintage?: string;
+  averageRating: number;
+  ratingsCount: number;
+  price?: {
+    amount: number;
+    currency: string;
+  };
+  imageUrl?: string;
+  style?: {
+    body?: string;
+    acidity?: string;
+    tannins?: string;
+  };
+  foodPairings?: string[];
+  description?: string;
+  vivinoUrl?: string;
 }
 
 interface WineFormProps {
@@ -38,6 +64,14 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Vivino integration state
+  const [vivinoSearching, setVivinoSearching] = useState(false);
+  const [vivinoResults, setVivinoResults] = useState<VivinoWine[]>([]);
+  const [vivinoError, setVivinoError] = useState<string | null>(null);
+  const [showVivinoSearch, setShowVivinoSearch] = useState(false);
+  const [vivinoSearchQuery, setVivinoSearchQuery] = useState("");
+  const [selectedVivinoWine, setSelectedVivinoWine] = useState<VivinoWine | null>(null);
+
   const [formData, setFormData] = useState<WineFormData>({
     name: initialData?.name || "",
     winery: initialData?.winery || "",
@@ -53,6 +87,88 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     storageLocation: initialData?.storageLocation || "",
     isWishlist: initialData?.isWishlist || false,
   });
+
+  // Search Vivino for wine data
+  const searchVivino = async (query: string, vintage?: string) => {
+    if (!query.trim()) return;
+
+    setVivinoSearching(true);
+    setVivinoError(null);
+    setVivinoResults([]);
+    setSelectedVivinoWine(null);
+
+    try {
+      const response = await fetch("/api/wine/vivino", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "search",
+          query: query.trim(),
+          vintage,
+          limit: 5,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        // Don't show error for "not found" - just empty results
+        if (response.status === 404) {
+          setVivinoResults([]);
+        } else {
+          throw new Error(data.error || "Failed to search Vivino");
+        }
+        return;
+      }
+
+      const wines = data.data?.wines || [];
+      setVivinoResults(wines);
+
+      // If exactly one result, auto-select it
+      if (wines.length === 1) {
+        applyVivinoWine(wines[0]);
+      }
+    } catch (error) {
+      console.error("Vivino search error:", error);
+      setVivinoError(
+        error instanceof Error
+          ? error.message
+          : "Failed to search Vivino"
+      );
+    } finally {
+      setVivinoSearching(false);
+    }
+  };
+
+  // Apply Vivino wine data to form
+  const applyVivinoWine = (wine: VivinoWine) => {
+    setSelectedVivinoWine(wine);
+    setFormData((prev) => ({
+      ...prev,
+      // Only fill if currently empty or use Vivino data to enrich
+      name: prev.name || wine.name,
+      winery: prev.winery || wine.winery,
+      grapeVariety: prev.grapeVariety || wine.grapeVariety || prev.grapeVariety,
+      region: prev.region || wine.region,
+      country: prev.country || wine.country,
+      vintage: wine.vintage ? parseInt(wine.vintage) : prev.vintage,
+      // Use Vivino price if we don't have one and it's in SEK
+      price: prev.price === undefined && wine.price?.currency === "SEK"
+        ? wine.price.amount
+        : prev.price,
+    }));
+
+    // Hide the search panel after selection
+    setShowVivinoSearch(false);
+  };
+
+  // Handle manual Vivino search
+  const handleVivinoSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (vivinoSearchQuery.trim()) {
+      searchVivino(vivinoSearchQuery, formData.vintage?.toString());
+    }
+  };
 
   const analyzeWineLabel = async (imageBase64: string, mimeType: string) => {
     setAnalyzing(true);
@@ -88,6 +204,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         region: wineData.region || prev.region,
         country: wineData.country || prev.country,
       }));
+
+      // After Gemini analysis, search Vivino for additional details
+      const wineName = wineData.name || wineData.winery;
+      if (wineName) {
+        const searchQuery = [wineData.winery, wineData.name].filter(Boolean).join(" ");
+        searchVivino(searchQuery, wineData.vintage?.toString());
+      }
     } catch (error) {
       console.error("Wine label analysis error:", error);
       setAnalysisError(
@@ -250,6 +373,192 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           <p className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
             {analysisError}
           </p>
+        )}
+      </div>
+
+      {/* Vivino Search Section */}
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <WineIcon className="w-5 h-5 text-wine-600" />
+            <span className="text-sm font-medium text-gray-700">Vivino Lookup</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowVivinoSearch(!showVivinoSearch)}
+            className="text-sm text-wine-600 hover:text-wine-700 font-medium"
+          >
+            {showVivinoSearch ? "Hide" : "Search Vivino"}
+          </button>
+        </div>
+
+        {/* Vivino searching indicator */}
+        {vivinoSearching && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Searching Vivino...</span>
+          </div>
+        )}
+
+        {/* Vivino error */}
+        {vivinoError && (
+          <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded mb-3">
+            {vivinoError}
+          </p>
+        )}
+
+        {/* Selected Vivino wine info */}
+        {selectedVivinoWine && !showVivinoSearch && (
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-wine-200">
+            {selectedVivinoWine.imageUrl && (
+              <div className="relative w-12 h-16 flex-shrink-0">
+                <Image
+                  src={selectedVivinoWine.imageUrl}
+                  alt={selectedVivinoWine.name}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {selectedVivinoWine.winery} {selectedVivinoWine.name}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                  <span className="text-xs text-gray-600">
+                    {selectedVivinoWine.averageRating.toFixed(1)} ({selectedVivinoWine.ratingsCount.toLocaleString()} ratings)
+                  </span>
+                </div>
+              </div>
+              {selectedVivinoWine.vivinoUrl && (
+                <a
+                  href={selectedVivinoWine.vivinoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-wine-600 hover:text-wine-700 mt-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  View on Vivino
+                </a>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedVivinoWine(null);
+                setShowVivinoSearch(true);
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Manual search form */}
+        {showVivinoSearch && (
+          <div className="space-y-3">
+            <form onSubmit={handleVivinoSearch} className="flex gap-2">
+              <input
+                type="text"
+                value={vivinoSearchQuery}
+                onChange={(e) => setVivinoSearchQuery(e.target.value)}
+                placeholder="Search wine name..."
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500"
+              />
+              <button
+                type="submit"
+                disabled={vivinoSearching || !vivinoSearchQuery.trim()}
+                className="px-4 py-2 bg-wine-600 text-white text-sm rounded-lg hover:bg-wine-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                Search
+              </button>
+            </form>
+
+            {/* Quick search from form data */}
+            {(formData.name || formData.winery) && !vivinoSearchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  const query = [formData.winery, formData.name].filter(Boolean).join(" ");
+                  setVivinoSearchQuery(query);
+                  searchVivino(query, formData.vintage?.toString());
+                }}
+                className="text-sm text-wine-600 hover:text-wine-700"
+              >
+                Search for "{[formData.winery, formData.name].filter(Boolean).join(" ")}"
+              </button>
+            )}
+
+            {/* Vivino search results */}
+            {vivinoResults.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-xs text-gray-500">
+                  {vivinoResults.length} result{vivinoResults.length !== 1 ? "s" : ""} found. Select one to auto-fill:
+                </p>
+                {vivinoResults.map((wine) => (
+                  <button
+                    key={wine.id}
+                    type="button"
+                    onClick={() => applyVivinoWine(wine)}
+                    className={`w-full flex items-start gap-3 p-3 bg-white rounded-lg border hover:border-wine-300 transition-colors text-left ${
+                      selectedVivinoWine?.id === wine.id ? "border-wine-500 ring-1 ring-wine-500" : "border-gray-200"
+                    }`}
+                  >
+                    {wine.imageUrl && (
+                      <div className="relative w-10 h-14 flex-shrink-0">
+                        <Image
+                          src={wine.imageUrl}
+                          alt={wine.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {wine.winery} {wine.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {wine.vintage && `${wine.vintage} • `}
+                        {wine.region}, {wine.country}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                          <span className="text-xs text-gray-600">
+                            {wine.averageRating.toFixed(1)}
+                          </span>
+                        </div>
+                        {wine.price && (
+                          <span className="text-xs text-gray-600">
+                            {wine.price.amount.toFixed(0)} {wine.price.currency}
+                          </span>
+                        )}
+                        {wine.grapeVariety && (
+                          <span className="text-xs text-gray-500 truncate">
+                            {wine.grapeVariety}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results message */}
+            {vivinoResults.length === 0 && !vivinoSearching && vivinoSearchQuery && !vivinoError && (
+              <p className="text-sm text-gray-500 text-center py-2">
+                No wines found. Try a different search term.
+              </p>
+            )}
+          </div>
         )}
       </div>
 

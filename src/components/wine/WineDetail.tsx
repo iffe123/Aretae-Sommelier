@@ -23,6 +23,11 @@ import {
   MessageCircle,
   ArrowLeft,
   ChevronRight,
+  Star,
+  ExternalLink,
+  Gauge,
+  Droplets,
+  Utensils,
 } from "lucide-react";
 
 interface WineDetailProps {
@@ -163,6 +168,91 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
               <p className="text-gray-600 whitespace-pre-wrap">
                 {wine.tastingNotes}
               </p>
+            </div>
+          )}
+
+          {/* Vivino Data */}
+          {(wine.vivinoRating || wine.body || wine.acidity || (wine.foodPairings && wine.foodPairings.length > 0)) && (
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-gray-900">From Vivino</h2>
+                {wine.vivinoUrl && (
+                  <a
+                    href={wine.vivinoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-wine-600 hover:text-wine-700"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View on Vivino
+                  </a>
+                )}
+              </div>
+
+              {/* Vivino Rating */}
+              {wine.vivinoRating !== undefined && wine.vivinoRating > 0 && (
+                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xl font-bold text-gray-900">
+                      {wine.vivinoRating.toFixed(1)}
+                    </span>
+                  </div>
+                  {wine.vivinoRatingsCount !== undefined && (
+                    <span className="text-sm text-gray-500">
+                      ({wine.vivinoRatingsCount.toLocaleString()} ratings)
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Body and Acidity */}
+              {(wine.body || wine.acidity) && (
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  {wine.body && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-wine-50 rounded-full flex items-center justify-center">
+                        <Gauge className="w-4 h-4 text-wine-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Body</p>
+                        <p className="text-sm font-medium text-gray-900">{wine.body}</p>
+                      </div>
+                    </div>
+                  )}
+                  {wine.acidity && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-wine-50 rounded-full flex items-center justify-center">
+                        <Droplets className="w-4 h-4 text-wine-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Acidity</p>
+                        <p className="text-sm font-medium text-gray-900">{wine.acidity}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Food Pairings */}
+              {wine.foodPairings && wine.foodPairings.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Utensils className="w-4 h-4 text-wine-500" />
+                    <span className="text-sm text-gray-500">Pairs well with:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {wine.foodPairings.map((food, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-wine-50 text-wine-700"
+                      >
+                        {food}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

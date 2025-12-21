@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
 import StarRating from "@/components/ui/StarRating";
-import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, ExternalLink } from "lucide-react";
+import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, ExternalLink, Utensils, Droplets, Gauge } from "lucide-react";
 import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
@@ -86,6 +86,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     bottlesOwned: initialData?.bottlesOwned && initialData.bottlesOwned > 0 ? initialData.bottlesOwned : undefined,
     storageLocation: initialData?.storageLocation || "",
     isWishlist: initialData?.isWishlist || false,
+    // Vivino-populated fields
+    vivinoRating: initialData?.vivinoRating,
+    vivinoRatingsCount: initialData?.vivinoRatingsCount,
+    vivinoUrl: initialData?.vivinoUrl,
+    body: initialData?.body || "",
+    acidity: initialData?.acidity || "",
+    foodPairings: initialData?.foodPairings || [],
   });
 
   // Search Vivino for wine data
@@ -156,6 +163,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
       price: prev.price === undefined && wine.price?.currency === "SEK"
         ? wine.price.amount
         : prev.price,
+      // Vivino-specific fields - always update with Vivino data
+      vivinoRating: wine.averageRating,
+      vivinoRatingsCount: wine.ratingsCount,
+      vivinoUrl: wine.vivinoUrl,
+      body: wine.style?.body || prev.body,
+      acidity: wine.style?.acidity || prev.acidity,
+      foodPairings: wine.foodPairings || prev.foodPairings,
     }));
 
     // Hide the search panel after selection
@@ -528,7 +542,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                         {wine.vintage && `${wine.vintage} • `}
                         {wine.region}, {wine.country}
                       </p>
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center flex-wrap gap-2 mt-1">
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                           <span className="text-xs text-gray-600">
@@ -546,6 +560,29 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                           </span>
                         )}
                       </div>
+                      {/* Show available Vivino data */}
+                      {(wine.style?.body || wine.style?.acidity || wine.foodPairings) && (
+                        <div className="flex items-center flex-wrap gap-2 mt-1.5 text-xs">
+                          {wine.style?.body && (
+                            <span className="inline-flex items-center gap-1 text-gray-500">
+                              <Gauge className="w-3 h-3" />
+                              {wine.style.body}
+                            </span>
+                          )}
+                          {wine.style?.acidity && (
+                            <span className="inline-flex items-center gap-1 text-gray-500">
+                              <Droplets className="w-3 h-3" />
+                              {wine.style.acidity} acidity
+                            </span>
+                          )}
+                          {wine.foodPairings && wine.foodPairings.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-gray-500">
+                              <Utensils className="w-3 h-3" />
+                              {wine.foodPairings.length} pairings
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -685,6 +722,84 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         maxLength={LIMITS.storageLocation}
         error={validationErrors.storageLocation}
       />
+
+      {/* Vivino Auto-populated Wine Characteristics */}
+      {(formData.body || formData.acidity || formData.vivinoRating || (formData.foodPairings && formData.foodPairings.length > 0)) && (
+        <div className="border border-wine-200 rounded-lg p-4 bg-wine-50/50 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <WineIcon className="w-4 h-4 text-wine-600" />
+            <span className="text-sm font-medium text-wine-700">From Vivino</span>
+            {formData.vivinoUrl && (
+              <a
+                href={formData.vivinoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex items-center gap-1 text-xs text-wine-600 hover:text-wine-700"
+              >
+                <ExternalLink className="w-3 h-3" />
+                View on Vivino
+              </a>
+            )}
+          </div>
+
+          {/* Vivino Rating */}
+          {formData.vivinoRating !== undefined && formData.vivinoRating > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+              <span className="font-medium text-gray-900">
+                {formData.vivinoRating.toFixed(1)}
+              </span>
+              {formData.vivinoRatingsCount !== undefined && (
+                <span className="text-gray-500">
+                  ({formData.vivinoRatingsCount.toLocaleString()} ratings)
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Body and Acidity */}
+          <div className="grid grid-cols-2 gap-4">
+            {formData.body && (
+              <div className="flex items-center gap-2 text-sm">
+                <Gauge className="w-4 h-4 text-wine-500" />
+                <div>
+                  <span className="text-gray-500">Body: </span>
+                  <span className="font-medium text-gray-900">{formData.body}</span>
+                </div>
+              </div>
+            )}
+            {formData.acidity && (
+              <div className="flex items-center gap-2 text-sm">
+                <Droplets className="w-4 h-4 text-wine-500" />
+                <div>
+                  <span className="text-gray-500">Acidity: </span>
+                  <span className="font-medium text-gray-900">{formData.acidity}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Food Pairings */}
+          {formData.foodPairings && formData.foodPairings.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm mb-2">
+                <Utensils className="w-4 h-4 text-wine-500" />
+                <span className="text-gray-500">Food Pairings:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.foodPairings.map((food, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-wine-100 text-wine-700"
+                  >
+                    {food}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Wishlist Toggle */}
       <div className="flex items-center gap-3">

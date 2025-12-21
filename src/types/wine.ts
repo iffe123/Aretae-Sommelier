@@ -16,6 +16,13 @@ export interface Wine {
   isWishlist: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Vivino-populated fields
+  vivinoRating?: number; // Vivino average rating (1-5 scale)
+  vivinoRatingsCount?: number; // Number of ratings on Vivino
+  vivinoUrl?: string; // Link to wine on Vivino
+  body?: string; // Light-bodied, Medium-bodied, Full-bodied
+  acidity?: string; // Low, Medium, High
+  foodPairings?: string[]; // Array of food pairing suggestions
 }
 
 export interface WineFormData {
@@ -32,6 +39,13 @@ export interface WineFormData {
   bottlesOwned?: number;
   storageLocation?: string;
   isWishlist: boolean;
+  // Vivino-populated fields
+  vivinoRating?: number;
+  vivinoRatingsCount?: number;
+  vivinoUrl?: string;
+  body?: string;
+  acidity?: string;
+  foodPairings?: string[];
 }
 
 export type WineFilterOptions = {

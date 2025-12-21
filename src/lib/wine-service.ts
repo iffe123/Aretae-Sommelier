@@ -106,6 +106,13 @@ export async function addWine(
     bottlesOwned: data.bottlesOwned ?? 1,
     storageLocation: sanitizeString(data.storageLocation),
     isWishlist: data.isWishlist || false,
+    // Vivino-populated fields
+    vivinoRating: data.vivinoRating || null,
+    vivinoRatingsCount: data.vivinoRatingsCount || null,
+    vivinoUrl: sanitizeString(data.vivinoUrl),
+    body: sanitizeString(data.body),
+    acidity: sanitizeString(data.acidity),
+    foodPairings: data.foodPairings || [],
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   };
@@ -136,7 +143,7 @@ export async function updateWine(
 
   // Sanitize string fields before update
   const sanitizedData: Record<string, unknown> = {};
-  const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation'];
+  const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation', 'vivinoUrl', 'body', 'acidity'];
 
   for (const [key, value] of Object.entries(data)) {
     if (key === 'photo') continue; // Skip photo field

@@ -83,17 +83,31 @@ async function delay(ms: number): Promise<void> {
 /**
  * Parse Vivino's explore/search response into our clean interface
  */
-function parseExploreResponse(data: Record<string, unknown>): VivinoWine[] {
+function parseSearchResponse(data: Record<string, unknown>): VivinoWine[] {
   const wines: VivinoWine[] = [];
 
   try {
+    // The search endpoint returns matches in wine_matches or vintage_matches
     // The explore endpoint returns matches in explore_vintage.matches
-    const exploreVintage = data.explore_vintage as Record<string, unknown> | undefined;
-    const matches = (exploreVintage?.matches as Array<Record<string, unknown>>) || [];
+    // Try search format first, then fall back to explore format
+    let matches: Array<Record<string, unknown>> = [];
+
+    // Search endpoint format: wine_matches array
+    const wineMatches = data.wine_matches as Array<Record<string, unknown>> | undefined;
+    if (wineMatches && wineMatches.length > 0) {
+      matches = wineMatches;
+    } else {
+      // Explore endpoint format: explore_vintage.matches
+      const exploreVintage = data.explore_vintage as Record<string, unknown> | undefined;
+      matches = (exploreVintage?.matches as Array<Record<string, unknown>>) || [];
+    }
 
     for (const match of matches) {
+      // Search endpoint: wine directly in match.wine
+      // Explore endpoint: wine nested in match.vintage.wine
       const vintage = match.vintage as Record<string, unknown> | undefined;
-      const wine = vintage?.wine as Record<string, unknown> | undefined;
+      const wine = (match.wine as Record<string, unknown> | undefined) ||
+                   (vintage?.wine as Record<string, unknown> | undefined);
 
       if (!wine) continue;
 
@@ -157,7 +171,7 @@ function parseExploreResponse(data: Record<string, unknown>): VivinoWine[] {
       });
     }
   } catch (error) {
-    console.error("[Vivino] Error parsing explore response:", error);
+    console.error("[Vivino] Error parsing search response:", error);
   }
 
   return wines;
@@ -212,8 +226,8 @@ export async function searchWines(
 
   try {
     const encodedQuery = encodeURIComponent(query);
-    // min_rating=1 is required as Vivino API now requires at least one filter to be set
-    const url = `${VIVINO_API_BASE}/explore/explore?q=${encodedQuery}&limit=${limit}&min_rating=1`;
+    // Use the search endpoint for text-based search (not explore which is for browsing)
+    const url = `${VIVINO_API_BASE}/search/search?q=${encodedQuery}&limit=${limit}`;
 
     console.log(`[Vivino] Searching for: "${query}"`);
 
@@ -236,7 +250,7 @@ export async function searchWines(
     }
 
     const data = await response.json();
-    const wines = parseExploreResponse(data);
+    const wines = parseSearchResponse(data);
 
     const result: VivinoSearchResult = {
       wines: wines.slice(0, limit),

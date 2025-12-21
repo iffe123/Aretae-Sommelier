@@ -159,9 +159,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
       region: prev.region || wine.region,
       country: prev.country || wine.country,
       vintage: wine.vintage ? parseInt(wine.vintage) : prev.vintage,
-      // Use Vivino price if we don't have one and it's in SEK
-      price: prev.price === undefined && wine.price?.currency === "SEK"
-        ? wine.price.amount
+      // Use Vivino price if we don't have one (price is displayed in kr)
+      price: prev.price === undefined && wine.price?.amount
+        ? Math.round(wine.price.amount)
         : prev.price,
       // Vivino-specific fields - always update with Vivino data
       vivinoRating: wine.averageRating,

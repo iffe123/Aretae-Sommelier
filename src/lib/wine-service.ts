@@ -38,19 +38,21 @@ export async function uploadWinePhoto(
   userId: string,
   file: File
 ): Promise<string> {
-  if (!storage) {
+  const storageInstance = storage;
+  if (!storageInstance) {
     throw new Error("Firebase storage is not initialized");
   }
   const fileExtension = file.name.split(".").pop();
   const fileName = `${userId}/${Date.now()}.${fileExtension}`;
-  const storageRef = ref(storage, `wine-photos/${fileName}`);
+  const storageRef = ref(storageInstance, `wine-photos/${fileName}`);
 
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 }
 
 export async function deleteWinePhoto(photoUrl: string): Promise<void> {
-  if (!storage) {
+  const storageInstance = storage;
+  if (!storageInstance) {
     throw new Error("Firebase storage is not initialized");
   }
   if (!photoUrl) {
@@ -69,7 +71,7 @@ export async function deleteWinePhoto(photoUrl: string): Promise<void> {
       }
     }
 
-    const storageRef = ref(storage, storagePath);
+    const storageRef = ref(storageInstance, storagePath);
     await deleteObject(storageRef);
   } catch (error) {
     // Log error but don't throw - photo deletion failure shouldn't block wine deletion

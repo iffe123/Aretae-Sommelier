@@ -212,7 +212,8 @@ export async function searchWines(
 
   try {
     const encodedQuery = encodeURIComponent(query);
-    const url = `${VIVINO_API_BASE}/explore/explore?q=${encodedQuery}&limit=${limit}`;
+    // min_rating=1 is required as Vivino API now requires at least one filter to be set
+    const url = `${VIVINO_API_BASE}/explore/explore?q=${encodedQuery}&limit=${limit}&min_rating=1`;
 
     console.log(`[Vivino] Searching for: "${query}"`);
 

@@ -414,11 +414,24 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           </div>
         )}
 
-        {/* Vivino error */}
+        {/* Vivino error with fallback link */}
         {vivinoError && (
-          <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded mb-3">
-            {vivinoError}
-          </p>
+          <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded mb-3 space-y-1">
+            <p>{vivinoError}</p>
+            {vivinoSearchQuery && (
+              <p className="text-xs">
+                <a
+                  href={`https://www.vivino.com/search/wines?q=${encodeURIComponent(vivinoSearchQuery)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-wine-600 hover:text-wine-700 underline inline-flex items-center gap-1"
+                >
+                  Search on Vivino directly
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </p>
+            )}
+          </div>
         )}
 
         {/* Selected Vivino wine info */}
@@ -589,11 +602,23 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
               </div>
             )}
 
-            {/* No results message */}
+            {/* No results message with Vivino link fallback */}
             {vivinoResults.length === 0 && !vivinoSearching && vivinoSearchQuery && !vivinoError && (
-              <p className="text-sm text-gray-500 text-center py-2">
-                No wines found. Try a different search term.
-              </p>
+              <div className="text-sm text-gray-500 text-center py-3 space-y-2">
+                <p>No wines found matching your search.</p>
+                <p className="text-xs">
+                  Vivino&apos;s search API is limited. Try{" "}
+                  <a
+                    href={`https://www.vivino.com/search/wines?q=${encodeURIComponent(vivinoSearchQuery)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-wine-600 hover:text-wine-700 underline inline-flex items-center gap-1"
+                  >
+                    searching on Vivino directly
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </p>
+              </div>
             )}
           </div>
         )}

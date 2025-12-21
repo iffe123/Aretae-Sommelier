@@ -53,6 +53,9 @@ const VIVINO_HEADERS = {
 // Base URL for Vivino API
 const VIVINO_API_BASE = "https://www.vivino.com/api";
 
+// Vivino search page URL (for fallback when API search doesn't work)
+export const VIVINO_SEARCH_URL = "https://www.vivino.com/search/wines";
+
 // Request delay to avoid rate limiting (ms)
 const REQUEST_DELAY = 500;
 
@@ -208,9 +211,13 @@ function getTanninDescription(score: number | undefined): string | undefined {
 }
 
 /**
- * Search for wines by name/query
+ * Search for wines using Vivino's explore endpoint
  *
- * @param query - Wine name or search term
+ * Note: Vivino's text search API (/search/search) has been deprecated.
+ * This function uses the explore endpoint which provides wine browsing
+ * with filters but limited text search capability.
+ *
+ * @param query - Wine name or search term (used for client-side filtering)
  * @param limit - Maximum number of results (default: 10)
  * @returns Search results with matching wines
  */
@@ -225,11 +232,11 @@ export async function searchWines(
   }
 
   try {
-    const encodedQuery = encodeURIComponent(query);
-    // Use the search endpoint for text-based search (not explore which is for browsing)
-    const url = `${VIVINO_API_BASE}/search/search?q=${encodedQuery}&limit=${limit}`;
-
     console.log(`[Vivino] Searching for: "${query}"`);
+
+    // Use the explore endpoint - the search endpoint (/search/search) was deprecated by Vivino
+    // The explore endpoint returns top-rated wines; we'll filter client-side by query terms
+    const url = `${VIVINO_API_BASE}/explore/explore?country_code=global&currency_code=USD&min_rating=1&order_by=ratings_count&order=desc&page=1&per_page=${Math.min(limit * 5, 100)}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -244,13 +251,31 @@ export async function searchWines(
     if (!response.ok) {
       console.error(`[Vivino] API error: ${response.status} ${response.statusText}`);
       return {
-        message: `Vivino API returned ${response.status}`,
+        message: `Vivino API returned ${response.status}. The search feature may be temporarily unavailable.`,
         code: "API_ERROR",
       };
     }
 
     const data = await response.json();
-    const wines = parseSearchResponse(data);
+    let wines = parseSearchResponse(data);
+
+    // Client-side filtering since explore endpoint doesn't support text search
+    if (query && wines.length > 0) {
+      const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      wines = wines.filter(wine => {
+        const searchableText = `${wine.name} ${wine.winery} ${wine.region} ${wine.country} ${wine.grapeVariety || ''}`.toLowerCase();
+        return queryTerms.some(term => searchableText.includes(term));
+      });
+    }
+
+    // If no matches found with filtering, return a helpful error
+    if (wines.length === 0) {
+      console.log(`[Vivino] No matches found for "${query}" - Vivino search API is limited`);
+      return {
+        message: `No wines found matching "${query}". Vivino's search API is limited - try searching directly on Vivino.`,
+        code: "NOT_FOUND",
+      };
+    }
 
     const result: VivinoSearchResult = {
       wines: wines.slice(0, limit),
@@ -269,22 +294,25 @@ export async function searchWines(
 }
 
 /**
- * Get detailed wine information by Vivino wine ID
+ * Get detailed wine information by Vivino vintage ID
  *
- * @param wineId - Vivino wine ID
+ * Note: Uses the vintages endpoint as the wines endpoint was deprecated.
+ *
+ * @param vintageId - Vivino vintage ID (from explore results)
  * @returns Wine details or error
  */
-export async function getWineDetails(wineId: string): Promise<VivinoWine | VivinoError> {
-  const cacheKey = `wine:${wineId}`;
+export async function getWineDetails(vintageId: string): Promise<VivinoWine | VivinoError> {
+  const cacheKey = `vintage:${vintageId}`;
   const cached = getCached<VivinoWine>(cacheKey);
   if (cached) {
     return cached;
   }
 
   try {
-    const url = `${VIVINO_API_BASE}/wines/${wineId}`;
+    // Use vintages endpoint - the wines endpoint was deprecated by Vivino
+    const url = `${VIVINO_API_BASE}/vintages/${vintageId}`;
 
-    console.log(`[Vivino] Fetching wine details: ${wineId}`);
+    console.log(`[Vivino] Fetching vintage details: ${vintageId}`);
 
     await delay(REQUEST_DELAY);
 
@@ -309,7 +337,7 @@ export async function getWineDetails(wineId: string): Promise<VivinoWine | Vivin
     }
 
     const data = await response.json();
-    const wine = parseWineDetailsResponse(data);
+    const wine = parseVintageDetailsResponse(data);
 
     if (wine) {
       setCache(cacheKey, wine);
@@ -327,7 +355,7 @@ export async function getWineDetails(wineId: string): Promise<VivinoWine | Vivin
 }
 
 /**
- * Parse Vivino's wine details response
+ * Parse Vivino's wine details response (legacy - kept for compatibility)
  */
 function parseWineDetailsResponse(data: Record<string, unknown>): VivinoWine | null {
   try {
@@ -389,6 +417,74 @@ function parseWineDetailsResponse(data: Record<string, unknown>): VivinoWine | n
 }
 
 /**
+ * Parse Vivino's vintage details response (from /api/vintages/{id} endpoint)
+ */
+function parseVintageDetailsResponse(data: Record<string, unknown>): VivinoWine | null {
+  try {
+    const vintage = data.vintage as Record<string, unknown> | undefined;
+    if (!vintage) return null;
+
+    const wine = vintage.wine as Record<string, unknown> | undefined;
+    if (!wine) return null;
+
+    const winery = wine.winery as Record<string, unknown> | undefined;
+    const region = wine.region as Record<string, unknown> | undefined;
+    const country = region?.country as Record<string, unknown> | undefined;
+    const style = wine.style as Record<string, unknown> | undefined;
+    const statistics = vintage.statistics as Record<string, unknown> | undefined;
+
+    // Parse food pairings
+    const foodPairings: string[] = [];
+    const foods = style?.food as Array<Record<string, unknown>> | undefined;
+    if (foods) {
+      for (const food of foods) {
+        const name = food.name as string | undefined;
+        if (name) foodPairings.push(name);
+      }
+    }
+
+    // Parse grapes
+    const grapes = wine.grapes as Array<Record<string, unknown>> | undefined;
+    const grapeNames = grapes
+      ?.map((g) => g.name as string)
+      .filter(Boolean)
+      .join(", ");
+
+    // Get vintage year
+    const year = vintage.year as number | undefined;
+
+    return {
+      id: String(vintage.id || ""),
+      name: (wine.name as string) || "",
+      winery: (winery?.name as string) || "",
+      region: (region?.name as string) || "",
+      country: (country?.name as string) || "",
+      grapeVariety: grapeNames,
+      vintage: year ? String(year) : undefined,
+      averageRating: (statistics?.ratings_average as number) || (statistics?.wine_ratings_average as number) || 0,
+      ratingsCount: (statistics?.ratings_count as number) || (statistics?.wine_ratings_count as number) || 0,
+      imageUrl: ((vintage.image as Record<string, unknown>)?.location as string) ||
+                ((wine.image as Record<string, unknown>)?.location as string) || undefined,
+      style: style
+        ? {
+            body: getBodyDescription(style.body as number | undefined),
+            acidity: getAcidityDescription(style.acidity as number | undefined),
+            tannins: style.tannin
+              ? getTanninDescription(style.tannin as number | undefined)
+              : undefined,
+          }
+        : undefined,
+      foodPairings: foodPairings.length > 0 ? foodPairings : undefined,
+      description: (style?.description as string) || undefined,
+      vivinoUrl: `https://www.vivino.com/w/${wine.id}`,
+    };
+  } catch (error) {
+    console.error("[Vivino] Error parsing vintage details:", error);
+    return null;
+  }
+}
+
+/**
  * Convenience function to search for a wine by name and return the best match
  *
  * @param name - Wine name
@@ -431,4 +527,18 @@ export function isVivinoError(
   result: VivinoWine | VivinoSearchResult | VivinoError
 ): result is VivinoError {
   return "code" in result && "message" in result;
+}
+
+/**
+ * Generate a Vivino search URL for manual lookup
+ *
+ * Since Vivino's search API is limited, this provides a direct link
+ * to search on Vivino's website.
+ *
+ * @param query - Wine name or search term
+ * @returns URL to Vivino search page
+ */
+export function getVivinoSearchUrl(query: string): string {
+  const encodedQuery = encodeURIComponent(query);
+  return `${VIVINO_SEARCH_URL}?q=${encodedQuery}`;
 }

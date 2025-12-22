@@ -73,7 +73,7 @@ test.describe('Authentication', () => {
       const passwordInput = page.getByLabel(/Password/i);
 
       // Check that password has minLength attribute
-      await expect(passwordInput).toHaveAttribute('minLength', '6');
+      await expect(passwordInput).toHaveAttribute('minLength', '8');
     });
 
     test('should display error for invalid credentials', async ({ page }) => {

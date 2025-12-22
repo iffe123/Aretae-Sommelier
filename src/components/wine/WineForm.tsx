@@ -504,7 +504,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                 }}
                 className="text-sm text-wine-600 hover:text-wine-700"
               >
-                Search for "{[formData.winery, formData.name].filter(Boolean).join(" ")}"
+                Search for “{[formData.winery, formData.name].filter(Boolean).join(" ")}”
               </button>
             )}
 

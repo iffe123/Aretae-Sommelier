@@ -54,6 +54,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+function isPlaceholderValue(value: unknown): boolean {
+  if (!value) return true;
+  const str = String(value).trim();
+  if (!str) return true;
+  // Common placeholders used in docs/examples.
+  return (
+    str === 'your_api_key_here' ||
+    str === 'your_project_id' ||
+    str === 'your_sender_id' ||
+    str === 'your_app_id' ||
+    str.includes('your_project') ||
+    str.includes('your_')
+  );
+}
+
+function isFirebaseConfigured(): boolean {
+  // Firebase Auth SDK will throw at runtime if apiKey is missing/invalid.
+  // For local dev / e2e runs we want the UI to render even without Firebase configured.
+  return (
+    !isPlaceholderValue(firebaseConfig.apiKey) &&
+    !isPlaceholderValue(firebaseConfig.authDomain) &&
+    !isPlaceholderValue(firebaseConfig.projectId) &&
+    !isPlaceholderValue(firebaseConfig.storageBucket) &&
+    !isPlaceholderValue(firebaseConfig.messagingSenderId) &&
+    !isPlaceholderValue(firebaseConfig.appId)
+  );
+}
+
 // Only initialize Firebase on the client side
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
@@ -76,10 +104,34 @@ if (typeof window !== 'undefined') {
     }
   }
 
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
+  if (!isFirebaseConfigured()) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '[Firebase] Firebase config is missing/placeholder. Running without Firebase enabled (auth/db/storage will be undefined).'
+      );
+    } else {
+      // In production we should fail fast: the app cannot function without Firebase.
+      throw new Error('[Firebase] Missing Firebase configuration in production.');
+    }
+  } else {
+    try {
+      app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+      auth = getAuth(app);
+      db = getFirestore(app);
+      storage = getStorage(app);
+    } catch (error) {
+      // Avoid hard-crashing the entire app in local dev/e2e when Firebase isn't configured correctly.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[Firebase] Failed to initialize Firebase. Continuing without Firebase.', error);
+        app = undefined;
+        auth = undefined;
+        db = undefined;
+        storage = undefined;
+      } else {
+        throw error;
+      }
+    }
+  }
 
   // Explicitly set auth persistence to local storage
   // This ensures the session persists across browser restarts and tabs
@@ -92,7 +144,7 @@ if (typeof window !== 'undefined') {
   }
 
   // Log successful initialization in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && app) {
     console.log('[Firebase] Initialized successfully for project:', firebaseConfig.projectId);
   }
 }

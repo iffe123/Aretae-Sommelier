@@ -161,6 +161,7 @@ test.describe('App Navigation', () => {
     test('should support forward navigation', async ({ page }) => {
       await page.goto('/');
       await page.getByRole('link', { name: /Get Started Free/i }).click();
+      await expect(page).toHaveURL('/signup');
       await page.goBack();
       await page.goForward();
 

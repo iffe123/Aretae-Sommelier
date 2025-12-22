@@ -19,6 +19,15 @@ export interface CellarData {
   totalValue: number;
 }
 
+export interface WineLabelData {
+  name: string | null;
+  winery: string | null;
+  vintage: number | null;
+  grapeVariety: string | null;
+  region: string | null;
+  country: string | null;
+}
+
 export async function chatWithSommelier(
   message: string,
   wineContext?: Wine,
@@ -45,4 +54,25 @@ export async function chatWithSommelier(
 
   const data = await response.json();
   return data.response;
+}
+
+export async function analyzeWineLabel(imageBase64: string, mimeType: string): Promise<WineLabelData> {
+  const response = await fetch("/api/analyze-wine", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      imageBase64,
+      mimeType,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || "Failed to analyze wine label");
+  }
+
+  return data.data;
 }

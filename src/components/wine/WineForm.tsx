@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Wine, WineFormData } from "@/types/wine";
+import { analyzeWineLabel, WineLabelData } from "@/lib/gemini";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
@@ -10,15 +11,6 @@ import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, Extern
 import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
-
-interface WineLabelData {
-  name: string | null;
-  winery: string | null;
-  vintage: number | null;
-  grapeVariety: string | null;
-  region: string | null;
-  country: string | null;
-}
 
 // Vivino wine data structure (matches lib/vivino.ts)
 interface VivinoWine {
@@ -184,29 +176,12 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     }
   };
 
-  const analyzeWineLabel = async (imageBase64: string, mimeType: string) => {
+  const handleLabelAnalysis = async (imageBase64: string, mimeType: string) => {
     setAnalyzing(true);
     setAnalysisError(null);
 
     try {
-      const response = await fetch("/api/analyze-wine", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageBase64,
-          mimeType,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to analyze wine label");
-      }
-
-      const wineData: WineLabelData = data.data;
+      const wineData = await analyzeWineLabel(imageBase64, mimeType);
 
       // Auto-fill form fields with extracted data
       setFormData((prev) => ({
@@ -263,7 +238,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
         // Analyze the wine label with Gemini Vision
         const mimeType = file.type || "image/jpeg";
-        analyzeWineLabel(base64Result, mimeType);
+        handleLabelAnalysis(base64Result, mimeType);
       };
       reader.readAsDataURL(file);
     }

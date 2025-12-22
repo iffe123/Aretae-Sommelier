@@ -60,6 +60,8 @@ function formatCellarData(wines: Wine[]): CellarData {
     rating: wine.rating ?? undefined,
     quantity: wine.bottlesOwned ?? undefined,
     storageLocation: wine.storageLocation ?? undefined,
+    wineType: wine.wineType ?? undefined,
+    classification: wine.classification ?? undefined,
   }));
 
   const totalBottles = wines.reduce((sum, wine) => sum + (wine.bottlesOwned || 0), 0);

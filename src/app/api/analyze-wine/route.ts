@@ -1,21 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const WINE_LABEL_PROMPT = `Analyze this wine bottle label image and extract the following information. Return ONLY a valid JSON object with these fields (use null for any field you cannot determine):
+const WINE_LABEL_PROMPT = `You are an expert sommelier and wine label analyst. Analyze this wine bottle label image and extract comprehensive information.
+
+Return ONLY a valid JSON object with these fields (use null for any field you cannot determine):
 {
-  "name": "wine name",
-  "winery": "producer/winery name",
+  "name": "wine name (cuvée name if applicable)",
+  "winery": "producer/winery/château/domaine name",
   "vintage": year as number or null,
-  "grapeVariety": "grape type(s)",
-  "region": "wine region",
-  "country": "country of origin"
+  "grapeVariety": "grape variety or blend (e.g., 'Cabernet Sauvignon', 'Grenache, Syrah, Mourvèdre')",
+  "region": "wine region (e.g., 'Napa Valley', 'Côtes du Rhône', 'Barossa Valley')",
+  "country": "country of origin",
+  "wineType": "red" | "white" | "rosé" | "sparkling" | "dessert" | "fortified" | "orange" or null,
+  "classification": "quality classification if visible (e.g., 'Grand Cru', 'Reserva', 'Premier Cru', 'DOC', 'DOCG')" or null,
+  "alcoholContent": alcohol percentage as number (e.g., 13.5) or null,
+  "drinkingWindowStart": suggested year to start drinking (based on vintage and wine style) or null,
+  "drinkingWindowEnd": suggested year by which to drink (based on aging potential) or null
 }
 
-Important:
-- Return ONLY the JSON object, no other text
-- If you can't read the label clearly, still try to extract what you can
-- The vintage should be a 4-digit year number, not a string
-- Be as accurate as possible with wine terminology`;
+Important guidelines:
+- Return ONLY the JSON object, no other text or markdown
+- The vintage must be a 4-digit year number, not a string
+- For wineType, infer from:
+  - Label color/design cues
+  - Grape varieties (e.g., Chardonnay → white, Pinot Noir → typically red)
+  - Region conventions (e.g., Champagne → sparkling, Sauternes → dessert)
+  - Terms like "Brut", "Rosé", "Blanc", "Rouge", "Tinto", "Bianco"
+- For drinkingWindow, estimate based on:
+  - Wine type (whites typically drink younger than reds)
+  - Quality level (Grand Cru ages longer)
+  - Region (Bordeaux ages longer than Beaujolais)
+  - Grape variety (Nebbiolo ages longer than Gamay)
+- Be precise with wine terminology and regional naming conventions
+- If the label shows multiple potential names, prefer the cuvée/wine name over the winery name`;
 
 interface WineLabelData {
   name: string | null;
@@ -24,6 +41,11 @@ interface WineLabelData {
   grapeVariety: string | null;
   region: string | null;
   country: string | null;
+  wineType: "red" | "white" | "rosé" | "sparkling" | "dessert" | "fortified" | "orange" | null;
+  classification: string | null;
+  alcoholContent: number | null;
+  drinkingWindowStart: number | null;
+  drinkingWindowEnd: number | null;
 }
 
 export async function POST(request: NextRequest) {

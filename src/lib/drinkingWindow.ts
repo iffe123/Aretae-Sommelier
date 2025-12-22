@@ -15,9 +15,20 @@ export interface DrinkingWindowInfo extends DrinkingWindow {
 }
 
 export function getDrinkingWindow(wine: Wine): DrinkingWindow {
+  // Use AI-suggested drinking window if available
+  if (wine.drinkingWindowStart && wine.drinkingWindowEnd) {
+    const midpoint = Math.floor((wine.drinkingWindowStart + wine.drinkingWindowEnd) / 2);
+    return {
+      start: wine.drinkingWindowStart,
+      peak: midpoint,
+      end: wine.drinkingWindowEnd,
+    };
+  }
+
   const vintage = wine.vintage;
   const grape = wine.grapeVariety?.toLowerCase() || "";
   const region = wine.region?.toLowerCase() || "";
+  const wineType = wine.wineType?.toLowerCase() || "";
 
   // Default: drink within 5 years
   let yearsToStart = 0;
@@ -73,10 +84,34 @@ export function getDrinkingWindow(wine: Wine): DrinkingWindow {
     yearsToEnd = 7;
   }
   // Champagne/Sparkling
-  else if (grape.includes("champagne") || region.includes("champagne")) {
+  else if (grape.includes("champagne") || region.includes("champagne") || wineType === "sparkling") {
     yearsToStart = 0;
     yearsToPeak = 5;
     yearsToEnd = 15;
+  }
+  // Dessert wines
+  else if (wineType === "dessert" || region.includes("sauternes") || region.includes("tokaj")) {
+    yearsToStart = 2;
+    yearsToPeak = 10;
+    yearsToEnd = 30;
+  }
+  // Fortified wines
+  else if (wineType === "fortified" || region.includes("porto") || region.includes("sherry") || region.includes("madeira")) {
+    yearsToStart = 0;
+    yearsToPeak = 5;
+    yearsToEnd = 50; // Many fortified wines can age extremely well
+  }
+  // Rosé - drink young
+  else if (wineType === "rosé") {
+    yearsToStart = 0;
+    yearsToPeak = 1;
+    yearsToEnd = 3;
+  }
+  // Orange wine
+  else if (wineType === "orange") {
+    yearsToStart = 0;
+    yearsToPeak = 3;
+    yearsToEnd = 8;
   }
 
   return {

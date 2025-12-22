@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Wine, WineFormData } from "@/types/wine";
+import { Wine, WineFormData, WineType, WINE_TYPES } from "@/types/wine";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import TextArea from "@/components/ui/TextArea";
 import StarRating from "@/components/ui/StarRating";
-import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, ExternalLink, Utensils, Droplets, Gauge } from "lucide-react";
+import Select from "@/components/ui/Select";
+import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, ExternalLink, Utensils, Droplets, Gauge, Calendar } from "lucide-react";
 import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
@@ -18,6 +19,11 @@ interface WineLabelData {
   grapeVariety: string | null;
   region: string | null;
   country: string | null;
+  wineType: WineType | null;
+  classification: string | null;
+  alcoholContent: number | null;
+  drinkingWindowStart: number | null;
+  drinkingWindowEnd: number | null;
 }
 
 // Vivino wine data structure (matches lib/vivino.ts)
@@ -86,6 +92,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     bottlesOwned: initialData?.bottlesOwned && initialData.bottlesOwned > 0 ? initialData.bottlesOwned : undefined,
     storageLocation: initialData?.storageLocation || "",
     isWishlist: initialData?.isWishlist || false,
+    // Wine classification
+    wineType: initialData?.wineType,
+    classification: initialData?.classification || "",
+    alcoholContent: initialData?.alcoholContent,
+    // Drinking window
+    drinkingWindowStart: initialData?.drinkingWindowStart,
+    drinkingWindowEnd: initialData?.drinkingWindowEnd,
     // Vivino-populated fields
     vivinoRating: initialData?.vivinoRating,
     vivinoRatingsCount: initialData?.vivinoRatingsCount,
@@ -217,6 +230,11 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         grapeVariety: wineData.grapeVariety || prev.grapeVariety,
         region: wineData.region || prev.region,
         country: wineData.country || prev.country,
+        wineType: wineData.wineType || prev.wineType,
+        classification: wineData.classification || prev.classification,
+        alcoholContent: wineData.alcoholContent || prev.alcoholContent,
+        drinkingWindowStart: wineData.drinkingWindowStart || prev.drinkingWindowStart,
+        drinkingWindowEnd: wineData.drinkingWindowEnd || prev.drinkingWindowEnd,
       }));
 
       // After Gemini analysis, search Vivino for additional details
@@ -641,6 +659,19 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           required
         />
 
+        <Select
+          id="wineType"
+          label="Wine Type"
+          value={formData.wineType || ""}
+          onChange={(e) =>
+            setFormData({ ...formData, wineType: (e.target.value as WineType) || undefined })
+          }
+          options={[
+            { value: "", label: "Select type..." },
+            ...WINE_TYPES.map((t) => ({ value: t.value, label: `${t.emoji} ${t.label}` })),
+          ]}
+        />
+
         <Input
           id="grapeVariety"
           label="Grape Variety *"
@@ -652,6 +683,17 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           maxLength={LIMITS.grapeVariety}
           error={validationErrors.grapeVariety}
           required
+        />
+
+        <Input
+          id="classification"
+          label="Classification"
+          value={formData.classification}
+          onChange={(e) =>
+            setFormData({ ...formData, classification: e.target.value })
+          }
+          placeholder="e.g., Grand Cru, Reserva"
+          maxLength={100}
         />
       </div>
 
@@ -722,6 +764,69 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         maxLength={LIMITS.storageLocation}
         error={validationErrors.storageLocation}
       />
+
+      {/* Additional Wine Details */}
+      <div className="grid grid-cols-3 gap-4">
+        <Input
+          id="alcoholContent"
+          label="Alcohol %"
+          type="number"
+          min={0}
+          max={25}
+          step={0.1}
+          value={formData.alcoholContent ?? ""}
+          placeholder="13.5"
+          onChange={(e) =>
+            setFormData({ ...formData, alcoholContent: e.target.value === "" ? undefined : parseFloat(e.target.value) })
+          }
+        />
+
+        <Input
+          id="drinkingWindowStart"
+          label="Drink From"
+          type="number"
+          min={1900}
+          max={2100}
+          value={formData.drinkingWindowStart ?? ""}
+          placeholder={`${new Date().getFullYear()}`}
+          onChange={(e) =>
+            setFormData({ ...formData, drinkingWindowStart: e.target.value === "" ? undefined : parseInt(e.target.value) })
+          }
+        />
+
+        <Input
+          id="drinkingWindowEnd"
+          label="Drink Until"
+          type="number"
+          min={1900}
+          max={2100}
+          value={formData.drinkingWindowEnd ?? ""}
+          placeholder={`${new Date().getFullYear() + 5}`}
+          onChange={(e) =>
+            setFormData({ ...formData, drinkingWindowEnd: e.target.value === "" ? undefined : parseInt(e.target.value) })
+          }
+        />
+      </div>
+
+      {/* AI-suggested Drinking Window indicator */}
+      {formData.drinkingWindowStart && formData.drinkingWindowEnd && (
+        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+          <Calendar className="w-4 h-4 text-wine-500" />
+          <span>
+            Drinking window: <span className="font-medium">{formData.drinkingWindowStart} - {formData.drinkingWindowEnd}</span>
+            {(() => {
+              const currentYear = new Date().getFullYear();
+              if (currentYear < formData.drinkingWindowStart) {
+                return <span className="ml-2 text-amber-600">(⏳ Still aging)</span>;
+              } else if (currentYear > formData.drinkingWindowEnd) {
+                return <span className="ml-2 text-red-600">(🔴 Past peak)</span>;
+              } else {
+                return <span className="ml-2 text-green-600">(🟢 Ready now)</span>;
+              }
+            })()}
+          </span>
+        </div>
+      )}
 
       {/* Vivino Auto-populated Wine Characteristics */}
       {(formData.body || formData.acidity || formData.vivinoRating || (formData.foodPairings && formData.foodPairings.length > 0)) && (

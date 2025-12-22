@@ -11,6 +11,8 @@ export interface CellarWineSummary {
   rating?: number;
   quantity?: number;
   storageLocation?: string;
+  wineType?: string;
+  classification?: string;
 }
 
 export interface CellarData {

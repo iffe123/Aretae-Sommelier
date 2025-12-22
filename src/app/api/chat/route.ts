@@ -10,8 +10,18 @@ Your expertise includes:
 - Aging potential and cellar management
 - Tasting notes and flavor profiles
 - Wine history and culture
+- Drinking windows and optimal consumption timing
 
 When given context about a specific wine from the user's collection, provide personalized advice about that wine. Otherwise, answer general wine questions with enthusiasm and expertise.
+
+DRINKING WINDOW GUIDELINES:
+- When discussing when to drink a wine, consider: grape variety, region, quality level, vintage age
+- Ready now (🟢): Wine is in its drinking window
+- At peak (🟡): Wine is at or near optimal drinking time - suggest drinking soon
+- Past peak (🔴): Wine may be declining - drink immediately or it may be too late
+- Still aging (⏳): Wine needs more time in the cellar
+- Be specific with years when recommending drinking windows
+- For wines past their peak, be honest but tactful - they may still be enjoyable
 
 Keep responses concise but informative. Use elegant language befitting a sommelier, but remain accessible to wine enthusiasts of all levels.`;
 
@@ -23,8 +33,18 @@ IMPORTANT: You have access to the user's wine cellar collection. When making rec
 - If they ask what wines they have from a region/country/grape, list the relevant wines from their cellar
 - If asked about food pairings, recommend wines FROM THEIR COLLECTION that would pair well
 - If they don't have a suitable wine, acknowledge this and suggest what to look for
-- When suggesting wines to drink soon, consider vintage age and typical aging potential for the grape variety
-- You can reference the total collection size and estimated value when relevant`;
+- You can reference the total collection size and estimated value when relevant
+
+DRINKING WINDOW AWARENESS:
+- When suggesting wines to drink, prioritize wines that are:
+  1. At peak (approaching optimal drinking time)
+  2. Past peak (should be drunk immediately to avoid further decline)
+  3. Ready now (in their drinking window)
+- For each wine, mentally calculate drinking window based on: vintage, grape variety, region, classification
+- Warn users about wines that may be past their prime
+- Suggest cellar-worthy wines for special occasions that are not yet ready
+- When asked "what should I drink tonight/this week", prioritize wines at peak or ready now
+- Use wine type (red/white/rosé/sparkling) to inform recommendations for specific occasions`;
 
 interface WineContext {
   name: string;
@@ -36,6 +56,14 @@ interface WineContext {
   price: number;
   rating?: number;
   tastingNotes?: string;
+  wineType?: string;
+  classification?: string;
+  alcoholContent?: number;
+  drinkingWindowStart?: number;
+  drinkingWindowEnd?: number;
+  body?: string;
+  acidity?: string;
+  vivinoRating?: number;
 }
 
 interface ChatMessage {
@@ -54,6 +82,8 @@ interface CellarWineSummary {
   rating?: number;
   quantity?: number;
   storageLocation?: string;
+  wineType?: string;
+  classification?: string;
 }
 
 interface CellarData {
@@ -67,18 +97,23 @@ function formatCellarSummary(cellarData: CellarData): string {
     return "";
   }
 
+  const currentYear = new Date().getFullYear();
   let summary = `\n\nUSER'S WINE CELLAR (${cellarData.wines.length} wines, ${cellarData.totalBottles} total bottles, ~${cellarData.totalValue.toLocaleString()} kr estimated value):\n`;
+  summary += `Current year: ${currentYear}\n\n`;
 
   // Format each wine efficiently to minimize tokens
   cellarData.wines.forEach((wine, index) => {
+    const wineAge = currentYear - wine.vintage;
     const parts = [
       `${index + 1}. ${wine.name}`,
       wine.winery,
-      wine.vintage,
+      `${wine.vintage} (${wineAge}y)`,
       wine.grapeVariety,
       `${wine.region}, ${wine.country}`,
     ];
 
+    if (wine.wineType) parts.push(wine.wineType);
+    if (wine.classification) parts.push(wine.classification);
     if (wine.price) parts.push(`${wine.price} kr`);
     if (wine.rating) parts.push(`${wine.rating}/5 stars`);
     if (wine.quantity && wine.quantity > 1) parts.push(`${wine.quantity} bottles`);
@@ -163,17 +198,27 @@ export async function POST(request: NextRequest) {
     let contextMessage = "";
     if (wineContext) {
       const wine = wineContext as WineContext;
+      const currentYear = new Date().getFullYear();
+      const wineAge = currentYear - wine.vintage;
+      
       contextMessage = `\n\nThe user is currently viewing this specific wine from their collection:
 - Name: ${wine.name}
 - Winery: ${wine.winery}
-- Vintage: ${wine.vintage}
+- Vintage: ${wine.vintage} (${wineAge} years old)
 - Grape: ${wine.grapeVariety}
 - Region: ${wine.region}, ${wine.country}
 - Price: ${wine.price} kr
+${wine.wineType ? `- Wine Type: ${wine.wineType}` : ""}
+${wine.classification ? `- Classification: ${wine.classification}` : ""}
+${wine.alcoholContent ? `- Alcohol: ${wine.alcoholContent}%` : ""}
 ${wine.rating ? `- User's Rating: ${wine.rating}/5 stars` : ""}
+${wine.vivinoRating ? `- Vivino Rating: ${wine.vivinoRating}/5` : ""}
+${wine.body ? `- Body: ${wine.body}` : ""}
+${wine.acidity ? `- Acidity: ${wine.acidity}` : ""}
+${wine.drinkingWindowStart && wine.drinkingWindowEnd ? `- Drinking Window: ${wine.drinkingWindowStart} - ${wine.drinkingWindowEnd}` : ""}
 ${wine.tastingNotes ? `- User's Tasting Notes: ${wine.tastingNotes}` : ""}
 
-Focus your response on this specific wine when answering their question.`;
+Focus your response on this specific wine when answering their question. Consider its current age and likely drinking window.`;
     }
 
     const history = (conversationHistory as ChatMessage[] | undefined)?.map((msg) => ({

@@ -108,7 +108,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     foodPairings: initialData?.foodPairings || [],
   });
 
-  // Search Vivino for wine data
+  // Search for wine data (tries Vivino first, then AI-powered lookup as fallback)
   const searchVivino = async (query: string, vintage?: string) => {
     if (!query.trim()) return;
 
@@ -118,6 +118,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     setSelectedVivinoWine(null);
 
     try {
+      // Try Vivino first
       const response = await fetch("/api/wine/vivino", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,35 +132,98 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        // Don't show error for "not found" - just empty results
-        if (response.status === 404) {
-          setVivinoResults([]);
-        } else if (response.status === 503 || data.code === "SERVICE_UNAVAILABLE") {
-          // Service temporarily unavailable - show friendly message
-          setVivinoError("Vivino lookup is temporarily unavailable. You can still add wine details manually.");
-        } else {
-          throw new Error(data.error || "Failed to search Vivino");
+      if (response.ok && data.success) {
+        const wines = data.data?.wines || [];
+        setVivinoResults(wines);
+
+        // If exactly one result, auto-select it
+        if (wines.length === 1) {
+          applyVivinoWine(wines[0]);
         }
         return;
       }
 
-      const wines = data.data?.wines || [];
-      setVivinoResults(wines);
-
-      // If exactly one result, auto-select it
-      if (wines.length === 1) {
-        applyVivinoWine(wines[0]);
+      // Vivino failed - try AI-powered lookup as fallback
+      if (response.status === 503 || data.code === "SERVICE_UNAVAILABLE" || response.status === 404) {
+        console.log("[WineForm] Vivino unavailable, trying AI lookup...");
+        await searchWithAI(query, vintage);
+        return;
       }
+
+      // Other errors - try AI fallback
+      console.warn("[WineForm] Vivino error, trying AI lookup...", data.error);
+      await searchWithAI(query, vintage);
+
     } catch (error) {
-      console.error("Vivino search error:", error);
-      setVivinoError(
-        error instanceof Error
-          ? error.message
-          : "Failed to search Vivino"
-      );
+      console.error("Wine search error:", error);
+      // Try AI fallback on network errors too
+      await searchWithAI(query, vintage);
     } finally {
       setVivinoSearching(false);
+    }
+  };
+
+  // AI-powered wine lookup (fallback when Vivino is unavailable)
+  const searchWithAI = async (query: string, vintage?: string) => {
+    try {
+      const response = await fetch("/api/wine/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: query.trim(),
+          vintage,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setVivinoError("Could not find wine details. You can add them manually.");
+        return;
+      }
+
+      const wineData = data.data;
+
+      if (!wineData.found) {
+        setVivinoError("Wine not found in databases. You can add details manually.");
+        return;
+      }
+
+      // Convert AI lookup result to VivinoWine format for UI consistency
+      const aiWine: VivinoWine = {
+        id: `ai-${Date.now()}`,
+        name: wineData.name || "",
+        winery: wineData.winery || "",
+        region: wineData.region || "",
+        country: wineData.country || "",
+        grapeVariety: wineData.grapeVariety,
+        vintage: wineData.vintage?.toString(),
+        averageRating: wineData.rating?.score || 0,
+        ratingsCount: wineData.rating?.count || 0,
+        price: wineData.price?.amount ? {
+          amount: wineData.price.amount,
+          currency: wineData.price.currency || "SEK",
+        } : undefined,
+        style: {
+          body: wineData.style?.body,
+          acidity: wineData.style?.acidity,
+          tannins: wineData.style?.tannins,
+        },
+        foodPairings: wineData.foodPairings,
+        description: wineData.description,
+        vivinoUrl: wineData.wineUrl,
+      };
+
+      setVivinoResults([aiWine]);
+      
+      // Auto-apply if we got good results
+      if (wineData.confidence === "high") {
+        applyVivinoWine(aiWine);
+      }
+
+    } catch (error) {
+      console.error("AI lookup error:", error);
+      setVivinoError("Could not find wine details. You can add them manually.");
     }
   };
 

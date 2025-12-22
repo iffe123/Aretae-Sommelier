@@ -135,6 +135,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         // Don't show error for "not found" - just empty results
         if (response.status === 404) {
           setVivinoResults([]);
+        } else if (response.status === 503 || data.code === "SERVICE_UNAVAILABLE") {
+          // Service temporarily unavailable - show friendly message
+          setVivinoError("Vivino lookup is temporarily unavailable. You can still add wine details manually.");
         } else {
           throw new Error(data.error || "Failed to search Vivino");
         }

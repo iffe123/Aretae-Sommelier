@@ -40,7 +40,7 @@ export interface VivinoSearchResult {
 
 export interface VivinoError {
   message: string;
-  code: "RATE_LIMITED" | "NOT_FOUND" | "API_ERROR" | "NETWORK_ERROR" | "PARSE_ERROR";
+  code: "RATE_LIMITED" | "NOT_FOUND" | "API_ERROR" | "NETWORK_ERROR" | "PARSE_ERROR" | "SERVICE_UNAVAILABLE";
 }
 
 // Headers required to access Vivino API
@@ -59,6 +59,19 @@ const REQUEST_DELAY = 500;
 // Simple in-memory cache with TTL
 const cache = new Map<string, { data: unknown; expiry: number }>();
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+// Track service availability to avoid repeated failed requests
+let serviceUnavailableUntil: number = 0;
+const SERVICE_UNAVAILABLE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function isServiceAvailable(): boolean {
+  return Date.now() >= serviceUnavailableUntil;
+}
+
+function markServiceUnavailable(): void {
+  serviceUnavailableUntil = Date.now() + SERVICE_UNAVAILABLE_CACHE_TTL;
+  console.warn(`[Vivino] Service marked unavailable until ${new Date(serviceUnavailableUntil).toISOString()}`);
+}
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -218,6 +231,14 @@ export async function searchWines(
   query: string,
   limit: number = 10
 ): Promise<VivinoSearchResult | VivinoError> {
+  // Check if service was recently marked as unavailable
+  if (!isServiceAvailable()) {
+    return {
+      message: "Vivino lookup is temporarily unavailable. You can still add wines manually.",
+      code: "SERVICE_UNAVAILABLE",
+    };
+  }
+
   const cacheKey = `search:${query}:${limit}`;
   const cached = getCached<VivinoSearchResult>(cacheKey);
   if (cached) {
@@ -241,8 +262,22 @@ export async function searchWines(
       return { message: "Rate limited by Vivino. Please try again later.", code: "RATE_LIMITED" };
     }
 
+    // Handle 404 - the search endpoint may have been deprecated
+    if (response.status === 404) {
+      console.warn("[Vivino] Search endpoint returned 404 - service may be unavailable");
+      markServiceUnavailable();
+      return {
+        message: "Vivino lookup is temporarily unavailable. You can still add wines manually.",
+        code: "SERVICE_UNAVAILABLE",
+      };
+    }
+
     if (!response.ok) {
       console.error(`[Vivino] API error: ${response.status} ${response.statusText}`);
+      // If we get repeated API errors, mark service as unavailable
+      if (response.status >= 500) {
+        markServiceUnavailable();
+      }
       return {
         message: `Vivino API returned ${response.status}`,
         code: "API_ERROR",
@@ -275,6 +310,14 @@ export async function searchWines(
  * @returns Wine details or error
  */
 export async function getWineDetails(wineId: string): Promise<VivinoWine | VivinoError> {
+  // Check if service was recently marked as unavailable
+  if (!isServiceAvailable()) {
+    return {
+      message: "Vivino lookup is temporarily unavailable.",
+      code: "SERVICE_UNAVAILABLE",
+    };
+  }
+
   const cacheKey = `wine:${wineId}`;
   const cached = getCached<VivinoWine>(cacheKey);
   if (cached) {
@@ -298,13 +341,44 @@ export async function getWineDetails(wineId: string): Promise<VivinoWine | Vivin
     }
 
     if (response.status === 404) {
+      // Check if the response is HTML (blocked by WAF) vs actual 404
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/html")) {
+        console.warn("[Vivino] Wine details endpoint blocked - service unavailable");
+        markServiceUnavailable();
+        return {
+          message: "Vivino lookup is temporarily unavailable.",
+          code: "SERVICE_UNAVAILABLE",
+        };
+      }
       return { message: "Wine not found on Vivino", code: "NOT_FOUND" };
     }
 
     if (!response.ok) {
+      // Check if response is HTML (WAF block)
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/html")) {
+        console.warn("[Vivino] Wine details endpoint blocked - service unavailable");
+        markServiceUnavailable();
+        return {
+          message: "Vivino lookup is temporarily unavailable.",
+          code: "SERVICE_UNAVAILABLE",
+        };
+      }
       return {
         message: `Vivino API returned ${response.status}`,
         code: "API_ERROR",
+      };
+    }
+
+    // Check if response is JSON (not HTML from WAF)
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      console.warn("[Vivino] Unexpected content type:", contentType);
+      markServiceUnavailable();
+      return {
+        message: "Vivino lookup is temporarily unavailable.",
+        code: "SERVICE_UNAVAILABLE",
       };
     }
 

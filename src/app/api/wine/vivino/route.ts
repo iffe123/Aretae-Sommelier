@@ -85,9 +85,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
       if (isVivinoError(result)) {
         console.warn(`[Vivino API] Search error: ${result.code} - ${result.message}`);
+        const status = 
+          result.code === "RATE_LIMITED" ? 429 :
+          result.code === "SERVICE_UNAVAILABLE" ? 503 : 500;
         return NextResponse.json(
           { success: false, error: result.message, code: result.code },
-          { status: result.code === "RATE_LIMITED" ? 429 : 500 }
+          { status }
         );
       }
 
@@ -116,9 +119,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
           );
         }
 
+        const status = 
+          result.code === "RATE_LIMITED" ? 429 :
+          result.code === "SERVICE_UNAVAILABLE" ? 503 : 500;
         return NextResponse.json(
           { success: false, error: result.message, code: result.code },
-          { status: result.code === "RATE_LIMITED" ? 429 : 500 }
+          { status }
         );
       }
 
@@ -138,9 +144,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
       if (isVivinoError(result)) {
         console.warn(`[Vivino API] Details error: ${result.code} - ${result.message}`);
+        const status = 
+          result.code === "NOT_FOUND" ? 404 :
+          result.code === "RATE_LIMITED" ? 429 :
+          result.code === "SERVICE_UNAVAILABLE" ? 503 : 500;
         return NextResponse.json(
           { success: false, error: result.message, code: result.code },
-          { status: result.code === "NOT_FOUND" ? 404 : result.code === "RATE_LIMITED" ? 429 : 500 }
+          { status }
         );
       }
 

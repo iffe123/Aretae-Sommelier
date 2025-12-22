@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Wine } from "@/types/wine";
+import { Wine, WINE_TYPES } from "@/types/wine";
 import StarRating from "@/components/ui/StarRating";
 import { Wine as WineIcon, Heart, MapPin, Check } from "lucide-react";
 
@@ -83,7 +83,12 @@ export default function WineCard({
           </span>
         </div>
 
-        <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+        <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+          {wine.wineType && (
+            <span className="px-2 py-0.5 bg-wine-50 text-wine-700 rounded-full">
+              {WINE_TYPES.find(t => t.value === wine.wineType)?.emoji} {WINE_TYPES.find(t => t.value === wine.wineType)?.label}
+            </span>
+          )}
           <span className="px-2 py-0.5 bg-gray-100 rounded-full">
             {wine.grapeVariety}
           </span>

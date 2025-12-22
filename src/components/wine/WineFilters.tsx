@@ -1,6 +1,6 @@
 "use client";
 
-import { WineFilterOptions } from "@/types/wine";
+import { WineFilterOptions, WINE_TYPES, WineType } from "@/types/wine";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { Search, SlidersHorizontal, X } from "lucide-react";
@@ -74,6 +74,7 @@ export default function WineFilters({
   };
 
   const hasActiveFilters =
+    filters.wineType ||
     filters.grapeVariety ||
     filters.country ||
     filters.region ||
@@ -132,6 +133,17 @@ export default function WineFilters({
       {/* Advanced Filters */}
       {showAdvanced && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+          <Select
+            id="wineType"
+            label="Wine Type"
+            value={filters.wineType || ""}
+            onChange={(e) => updateFilter("wineType", (e.target.value as WineType) || undefined)}
+            options={[
+              { value: "", label: "All types" },
+              ...WINE_TYPES.map((t) => ({ value: t.value, label: `${t.emoji} ${t.label}` })),
+            ]}
+          />
+
           <Select
             id="grapeVariety"
             label="Grape"

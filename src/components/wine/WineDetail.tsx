@@ -28,7 +28,11 @@ import {
   Gauge,
   Droplets,
   Utensils,
+  Grape,
+  Award,
+  Clock,
 } from "lucide-react";
+import { WINE_TYPES } from "@/types/wine";
 
 interface WineDetailProps {
   wine: Wine;
@@ -56,9 +60,24 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
     }
   };
 
+  // Get wine type info
+  const wineTypeInfo = wine.wineType 
+    ? WINE_TYPES.find(t => t.value === wine.wineType) 
+    : null;
+
   const infoItems = [
     { icon: Calendar, label: "Vintage", value: wine.vintage },
-    { icon: WineIcon, label: "Grape", value: wine.grapeVariety },
+    { icon: Grape, label: "Grape", value: wine.grapeVariety },
+    ...(wineTypeInfo ? [{ 
+      icon: WineIcon, 
+      label: "Type", 
+      value: `${wineTypeInfo.emoji} ${wineTypeInfo.label}` 
+    }] : []),
+    ...(wine.classification ? [{ 
+      icon: Award, 
+      label: "Classification", 
+      value: wine.classification 
+    }] : []),
     {
       icon: MapPin,
       label: "Origin",
@@ -69,6 +88,11 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
       label: "Price",
       value: wine.price != null ? `${wine.price.toFixed(0)} kr` : "—",
     },
+    ...(wine.alcoholContent ? [{
+      icon: Gauge,
+      label: "Alcohol",
+      value: `${wine.alcoholContent}%`,
+    }] : []),
     {
       icon: Package,
       label: "In Cellar",
@@ -83,6 +107,21 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
       value: wine.storageLocation,
     });
   }
+
+  // Calculate drinking window status
+  const getDrinkingStatus = () => {
+    if (!wine.drinkingWindowStart || !wine.drinkingWindowEnd) return null;
+    const currentYear = new Date().getFullYear();
+    if (currentYear < wine.drinkingWindowStart) {
+      return { emoji: "⏳", label: "Still Aging", color: "text-amber-600", bg: "bg-amber-50" };
+    } else if (currentYear > wine.drinkingWindowEnd) {
+      return { emoji: "🔴", label: "Past Peak", color: "text-red-600", bg: "bg-red-50" };
+    } else {
+      return { emoji: "🟢", label: "Ready Now", color: "text-green-600", bg: "bg-green-50" };
+    }
+  };
+
+  const drinkingStatus = getDrinkingStatus();
 
   return (
     <>
@@ -168,6 +207,33 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
               <p className="text-gray-600 whitespace-pre-wrap">
                 {wine.tastingNotes}
               </p>
+            </div>
+          )}
+
+          {/* Drinking Window */}
+          {(wine.drinkingWindowStart && wine.drinkingWindowEnd) && (
+            <div className={`rounded-xl p-4 shadow-sm border mb-4 ${drinkingStatus?.bg || 'bg-white'} border-gray-100`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                    <Clock className="w-5 h-5 text-wine-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Drinking Window</p>
+                    <p className="font-semibold text-gray-900">
+                      {wine.drinkingWindowStart} - {wine.drinkingWindowEnd}
+                    </p>
+                  </div>
+                </div>
+                {drinkingStatus && (
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${drinkingStatus.bg}`}>
+                    <span>{drinkingStatus.emoji}</span>
+                    <span className={`text-sm font-medium ${drinkingStatus.color}`}>
+                      {drinkingStatus.label}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

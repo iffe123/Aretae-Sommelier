@@ -282,7 +282,7 @@ export default function CellarPage() {
           wines={wines}
           loading={loading}
           emptyMessage="Your cellar is empty"
-          isFilterActive={!!(filters.search || filters.grapeVariety || filters.country || filters.region || filters.storageLocation)}
+          isFilterActive={!!(filters.search || filters.wineType || filters.grapeVariety || filters.country || filters.region || filters.storageLocation)}
           onAddWine={() => setShowAddModal(true)}
           onClearFilters={() => setFilters({})}
           isSelectionMode={isSelectionMode}

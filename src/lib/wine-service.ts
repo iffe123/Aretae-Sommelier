@@ -108,6 +108,13 @@ export async function addWine(
     bottlesOwned: data.bottlesOwned ?? 1,
     storageLocation: sanitizeString(data.storageLocation),
     isWishlist: data.isWishlist || false,
+    // Wine classification fields
+    wineType: data.wineType || null,
+    classification: sanitizeString(data.classification),
+    alcoholContent: data.alcoholContent || null,
+    // AI-suggested drinking window
+    drinkingWindowStart: data.drinkingWindowStart || null,
+    drinkingWindowEnd: data.drinkingWindowEnd || null,
     // Vivino-populated fields
     vivinoRating: data.vivinoRating || null,
     vivinoRatingsCount: data.vivinoRatingsCount || null,
@@ -145,7 +152,7 @@ export async function updateWine(
 
   // Sanitize string fields before update
   const sanitizedData: Record<string, unknown> = {};
-  const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation', 'vivinoUrl', 'body', 'acidity'];
+  const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation', 'classification', 'vivinoUrl', 'body', 'acidity'];
 
   for (const [key, value] of Object.entries(data)) {
     if (key === 'photo') continue; // Skip photo field
@@ -278,6 +285,11 @@ export async function getUserWines(
       // Include non-wishlist items (false, undefined, null, missing)
       wines = wines.filter((wine) => wine.isWishlist !== true);
     }
+  }
+
+  // Filter by wine type
+  if (filters?.wineType) {
+    wines = wines.filter((wine) => wine.wineType === filters.wineType);
   }
 
   return wines;

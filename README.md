@@ -131,6 +131,19 @@ GEMINI_API_KEY=your_gemini_api_key_here
 2. Create a new API key
 3. Add it to your `.env.local` as `GEMINI_API_KEY` (without `NEXT_PUBLIC_` prefix for security - API keys should never be exposed client-side)
 
+## E2E Testing with Firebase Emulator (Recommended)
+
+This repo includes a Playwright test lane that runs against **local Firebase emulators** (Auth + Firestore + Storage), so you can run true end-to-end tests without real Firebase credentials.
+
+### Run the emulator E2E suite
+
+```bash
+npm run test:e2e:emulator
+```
+
+- This starts the Firebase emulators, boots the Next.js dev server with emulator env vars, runs the Playwright specs in `e2e/emulator/`, then shuts everything down.
+- The Firebase Emulator UI is available at `http://127.0.0.1:4000` while the tests are running.
+
 ## Deployment
 
 ### Vercel (Recommended)
@@ -176,6 +189,7 @@ service firebase.storage {
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run test:e2e:emulator` - Run full E2E (Auth + Firestore CRUD) against local Firebase emulators
 
 ## License
 

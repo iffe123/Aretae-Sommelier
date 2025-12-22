@@ -1,7 +1,13 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import {
+  getAuth,
+  Auth,
+  browserLocalPersistence,
+  setPersistence,
+  connectAuthEmulator,
+} from 'firebase/auth';
+import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 
 /**
  * Firebase Configuration
@@ -87,6 +93,7 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
 let storage: FirebaseStorage | undefined;
+let emulatorsConnected = false;
 
 if (typeof window !== 'undefined') {
   // Check for missing configuration in development
@@ -119,6 +126,29 @@ if (typeof window !== 'undefined') {
       auth = getAuth(app);
       db = getFirestore(app);
       storage = getStorage(app);
+
+      // Optional: connect to Firebase emulators for local E2E tests.
+      // This keeps production behavior unchanged while enabling full auth + CRUD E2E locally.
+      const useEmulators =
+        String(process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR || '').toLowerCase() === '1' ||
+        String(process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR || '').toLowerCase() === 'true';
+
+      if (useEmulators && !emulatorsConnected) {
+        const host = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR_HOST || '127.0.0.1';
+        const authPort = Number(process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT || 9099);
+        const firestorePort = Number(process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080);
+        const storagePort = Number(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT || 9199);
+
+        // Prevent Firebase SDK from logging noisy emulator warnings in CI.
+        connectAuthEmulator(auth, `http://${host}:${authPort}`, { disableWarnings: true });
+        connectFirestoreEmulator(db, host, firestorePort);
+        connectStorageEmulator(storage, host, storagePort);
+        emulatorsConnected = true;
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[Firebase] Connected to emulators:', { host, authPort, firestorePort, storagePort });
+        }
+      }
     } catch (error) {
       // Avoid hard-crashing the entire app in local dev/e2e when Firebase isn't configured correctly.
       if (process.env.NODE_ENV !== 'production') {

@@ -5,10 +5,12 @@
   "description": "A mobile-first wine cellar app with AI sommelier chat",
   "scripts": {
     "dev": "next dev",
+    "dev:e2e": "cross-env NEXT_PUBLIC_USE_FIREBASE_EMULATOR=1 NEXT_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1 NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT=9099 NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_PORT=8080 NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT=9199 NEXT_PUBLIC_FIREBASE_API_KEY=fake-api-key NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=localhost NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-aretae-sommelier NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=demo-aretae-sommelier.appspot.com NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=fake-sender NEXT_PUBLIC_FIREBASE_APP_ID=fake-app npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
+    "test:e2e:emulator": "cross-env E2E_WITH_FIREBASE_EMULATOR=1 firebase emulators:exec --only auth,firestore,storage --project demo-aretae-sommelier \"playwright test e2e/emulator\"",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug"
@@ -31,8 +33,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
+    "firebase-tools": "^15.1.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"

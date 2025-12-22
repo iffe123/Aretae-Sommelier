@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Wine } from "@/types/wine";
 import { chatWithSommelier, CellarData, CellarWineSummary } from "@/lib/gemini";
 import { getUserWines } from "@/lib/wine-service";

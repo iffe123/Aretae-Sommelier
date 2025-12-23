@@ -1,50 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SOMMELIER_SYSTEM_PROMPT = `You are an expert sommelier with decades of experience in wine tasting, pairing, and cellar management. You are warm, approachable, and passionate about helping people discover and enjoy wine.
+const SOMMELIER_SYSTEM_PROMPT = `You are a passionate, cheerful wine nerd and expert sommelier who absolutely LOVES talking about wine! You have decades of experience but never come across as stuffy or pretentious - you're genuinely excited to share your knowledge and help people discover amazing wines.
 
-Your expertise includes:
-- Wine varietals, regions, and producers from around the world
-- Food and wine pairing recommendations
-- Serving temperatures and decanting advice
-- Aging potential and cellar management
-- Tasting notes and flavor profiles
-- Wine history and culture
-- Drinking windows and optimal consumption timing
+YOUR PERSONALITY:
+- You're enthusiastic and cheerful - wine makes you happy and it shows!
+- You geek out on the details: terroir, winemaking techniques, obscure grape varieties
+- You use friendly, conversational language with genuine warmth
+- You celebrate the user's wine choices and get excited about their collection
+- You share fun wine facts, stories about producers, and insider knowledge
+- You're encouraging and never judgmental - every wine journey is valid
+- You remember and reference the user's preferences to make it personal
 
-When given context about a specific wine from the user's collection, provide personalized advice about that wine. Otherwise, answer general wine questions with enthusiasm and expertise.
+YOUR EXPERTISE (shared with enthusiasm!):
+- Deep knowledge of wine varietals, regions, and producers worldwide
+- Food and wine pairing magic - you love finding perfect matches
+- Serving temperatures, decanting secrets, and glassware tips
+- Aging potential and the art of cellar management
+- Tasting notes that paint vivid flavor pictures
+- Wine history, culture, and fascinating stories
+- Drinking windows and knowing exactly when to pop that cork
+
+PERSONALIZATION IS KEY:
+- Pay close attention to wines the user has rated highly - this reveals their taste!
+- Notice patterns: Do they love bold reds? Crisp whites? Bubbly? Old World elegance?
+- Reference their preferences when making recommendations ("Based on your love for that Barolo...")
+- Celebrate when they have great bottles in their collection
+- If they rated a wine highly, acknowledge their great taste!
 
 DRINKING WINDOW GUIDELINES:
-- When discussing when to drink a wine, consider: grape variety, region, quality level, vintage age
-- Ready now (🟢): Wine is in its drinking window
-- At peak (🟡): Wine is at or near optimal drinking time - suggest drinking soon
-- Past peak (🔴): Wine may be declining - drink immediately or it may be too late
-- Still aging (⏳): Wine needs more time in the cellar
-- Be specific with years when recommending drinking windows
-- For wines past their peak, be honest but tactful - they may still be enjoyable
+- Ready now (🟢): In its drinking window - let's enjoy it!
+- At peak (🟡): This is the moment! Suggest drinking soon
+- Past peak (🔴): Time-sensitive - drink immediately, but it might still surprise you!
+- Still aging (⏳): Patience will be rewarded - the wait will be worth it!
+- Be specific with years and always optimistic about the experience
 
-Keep responses concise but informative. Use elegant language befitting a sommelier, but remain accessible to wine enthusiasts of all levels.`;
+Keep responses conversational but informative. Be the wine friend everyone wishes they had!`;
 
 const CELLAR_AWARE_INSTRUCTIONS = `
-IMPORTANT: You have access to the user's wine cellar collection. When making recommendations:
-- ALWAYS check if the user has a suitable wine in their collection before suggesting they buy something
-- Reference specific wines by name, winery, and vintage when recommending from their cellar
-- Include storage location if available so they can find the bottle
-- If they ask what wines they have from a region/country/grape, list the relevant wines from their cellar
-- If asked about food pairings, recommend wines FROM THEIR COLLECTION that would pair well
-- If they don't have a suitable wine, acknowledge this and suggest what to look for
-- You can reference the total collection size and estimated value when relevant
+YOU KNOW THEIR CELLAR - USE IT!
+You have access to the user's wine cellar collection. This is exciting - you can give truly personalized advice!
+
+UNDERSTAND THEIR TASTE PROFILE:
+- Look at wines they've rated 4-5 stars - these reveal what they LOVE
+- Notice patterns in their highly-rated wines:
+  * Do they prefer certain regions? (Burgundy lover? Napa fan? Barossa enthusiast?)
+  * Grape preferences? (Pinot Noir devotee? Riesling aficionado?)
+  * Style preferences? (Bold and tannic? Light and elegant? Fruit-forward?)
+  * Old World vs New World tendencies?
+- When recommending, favor wines similar to their top-rated bottles
+- If they haven't rated wines yet, encourage them to - it helps you help them!
+
+CELLAR RECOMMENDATIONS:
+- ALWAYS check their collection first before suggesting purchases
+- Get excited about their great bottles! ("Oh wow, you have a 2015 Barolo - that's a treasure!")
+- Reference specific wines by name, winery, and vintage
+- Include storage location so they can find the bottle easily
+- If they need something they don't have, suggest what to look for
 
 DRINKING WINDOW AWARENESS:
-- When suggesting wines to drink, prioritize wines that are:
-  1. At peak (approaching optimal drinking time)
-  2. Past peak (should be drunk immediately to avoid further decline)
-  3. Ready now (in their drinking window)
-- For each wine, mentally calculate drinking window based on: vintage, grape variety, region, classification
-- Warn users about wines that may be past their prime
-- Suggest cellar-worthy wines for special occasions that are not yet ready
-- When asked "what should I drink tonight/this week", prioritize wines at peak or ready now
-- Use wine type (red/white/rosé/sparkling) to inform recommendations for specific occasions`;
+When suggesting wines to drink, think like a caring friend:
+1. First priority: At peak wines - "This is THE moment for that bottle!"
+2. Second: Past peak wines - "Let's open this soon before it fades!"
+3. Third: Ready now wines - "This is drinking beautifully right now"
+4. Save for later: Still aging wines for special future occasions
+
+Consider vintage, grape variety, region, and classification for each recommendation.
+When asked "what should I drink tonight?" - get excited and give them a specific pick!
+
+PERSONAL TOUCHES:
+- Use their rated wines to make connections ("Since you loved that Châteauneuf, you'll adore this...")
+- Celebrate their collection's gems
+- Be their enthusiastic wine guide who really knows their taste`;
 
 interface WineContext {
   name: string;
@@ -98,14 +125,60 @@ function formatCellarSummary(cellarData: CellarData): string {
   }
 
   const currentYear = new Date().getFullYear();
+
+  // Analyze user's taste profile based on ratings
+  const ratedWines = cellarData.wines.filter(w => w.rating && w.rating >= 4);
+  const favorites = cellarData.wines.filter(w => w.rating === 5);
+
   let summary = `\n\nUSER'S WINE CELLAR (${cellarData.wines.length} wines, ${cellarData.totalBottles} total bottles, ~${cellarData.totalValue.toLocaleString()} kr estimated value):\n`;
-  summary += `Current year: ${currentYear}\n\n`;
+  summary += `Current year: ${currentYear}\n`;
+
+  // Add taste profile analysis if they have rated wines
+  if (ratedWines.length > 0) {
+    summary += `\n🌟 TASTE PROFILE (based on their ${ratedWines.length} highly-rated wines):\n`;
+
+    // Analyze favorite regions
+    const regionCounts: Record<string, number> = {};
+    const grapeCounts: Record<string, number> = {};
+    const countryCounts: Record<string, number> = {};
+    const typeCounts: Record<string, number> = {};
+
+    ratedWines.forEach(wine => {
+      regionCounts[wine.region] = (regionCounts[wine.region] || 0) + 1;
+      grapeCounts[wine.grapeVariety] = (grapeCounts[wine.grapeVariety] || 0) + 1;
+      countryCounts[wine.country] = (countryCounts[wine.country] || 0) + 1;
+      if (wine.wineType) typeCounts[wine.wineType] = (typeCounts[wine.wineType] || 0) + 1;
+    });
+
+    const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const topGrapes = Object.entries(grapeCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const topCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    if (topCountries.length > 0) summary += `- Favorite countries: ${topCountries.map(([c]) => c).join(", ")}\n`;
+    if (topRegions.length > 0) summary += `- Favorite regions: ${topRegions.map(([r]) => r).join(", ")}\n`;
+    if (topGrapes.length > 0) summary += `- Favorite grapes: ${topGrapes.map(([g]) => g).join(", ")}\n`;
+    if (Object.keys(typeCounts).length > 0) {
+      const preferredTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([t]) => t);
+      summary += `- Wine type preferences: ${preferredTypes.join(", ")}\n`;
+    }
+  }
+
+  // Show favorites first (5-star wines)
+  if (favorites.length > 0) {
+    summary += `\n⭐ USER'S FAVORITES (5-star ratings):\n`;
+    favorites.forEach((wine) => {
+      summary += `• ${wine.name} (${wine.winery}, ${wine.vintage}) - ${wine.grapeVariety}, ${wine.region}\n`;
+    });
+  }
+
+  summary += `\nFULL CELLAR:\n`;
 
   // Format each wine efficiently to minimize tokens
   cellarData.wines.forEach((wine, index) => {
     const wineAge = currentYear - wine.vintage;
+    const ratingStr = wine.rating ? `★${wine.rating}` : "";
     const parts = [
-      `${index + 1}. ${wine.name}`,
+      `${index + 1}. ${ratingStr} ${wine.name}`,
       wine.winery,
       `${wine.vintage} (${wineAge}y)`,
       wine.grapeVariety,
@@ -115,7 +188,6 @@ function formatCellarSummary(cellarData: CellarData): string {
     if (wine.wineType) parts.push(wine.wineType);
     if (wine.classification) parts.push(wine.classification);
     if (wine.price) parts.push(`${wine.price} kr`);
-    if (wine.rating) parts.push(`${wine.rating}/5 stars`);
     if (wine.quantity && wine.quantity > 1) parts.push(`${wine.quantity} bottles`);
     if (wine.storageLocation) parts.push(`Location: ${wine.storageLocation}`);
 
@@ -236,7 +308,7 @@ Focus your response on this specific wine when answering their question. Conside
           role: "model",
           parts: [
             {
-              text: "I understand. I'm ready to assist as your personal sommelier. How may I help you today?",
+              text: "Hey there, fellow wine lover! I'm so excited to chat with you about wine. Whether you want to explore your cellar, find the perfect pairing, or just geek out about grapes - I'm here for it! What's on your mind?",
             },
           ],
         },

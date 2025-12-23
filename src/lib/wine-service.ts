@@ -34,6 +34,24 @@ function sanitizeString(value: string | undefined | null): string {
   return withoutTags.trim().replace(/\s+/g, ' ');
 }
 
+/**
+ * Sanitize a numeric value - converts undefined, null, NaN, Infinity to null
+ * Firestore doesn't accept undefined or special number values
+ */
+function sanitizeNumber(value: number | undefined | null): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) return null;
+  return value;
+}
+
+/**
+ * Sanitize an array of strings - ensures it's a valid array with string items
+ */
+function sanitizeStringArray(value: string[] | undefined | null): string[] {
+  if (!value || !Array.isArray(value)) return [];
+  return value.filter(item => typeof item === 'string' && item.trim() !== '');
+}
+
 export async function uploadWinePhoto(
   userId: string,
   file: File
@@ -92,36 +110,36 @@ export async function addWine(
     photoUrl = await uploadWinePhoto(userId, data.photo);
   }
 
-  // Sanitize all string fields and prevent undefined values in Firestore
+  // Sanitize all fields and prevent undefined/NaN values in Firestore
   const wineData = {
     userId,
     name: sanitizeString(data.name),
     winery: sanitizeString(data.winery),
-    vintage: data.vintage || null,
+    vintage: sanitizeNumber(data.vintage) ?? new Date().getFullYear(),
     grapeVariety: sanitizeString(data.grapeVariety),
     region: sanitizeString(data.region),
     country: sanitizeString(data.country),
-    price: data.price || 0,
+    price: sanitizeNumber(data.price) ?? 0,
     photoUrl: photoUrl || '',  // Never undefined!
-    rating: data.rating || 0,
+    rating: sanitizeNumber(data.rating) ?? 0,
     tastingNotes: sanitizeString(data.tastingNotes),
-    bottlesOwned: data.bottlesOwned ?? 1,
+    bottlesOwned: sanitizeNumber(data.bottlesOwned) ?? 1,
     storageLocation: sanitizeString(data.storageLocation),
     isWishlist: data.isWishlist || false,
     // Wine classification fields
     wineType: data.wineType || null,
     classification: sanitizeString(data.classification),
-    alcoholContent: data.alcoholContent || null,
+    alcoholContent: sanitizeNumber(data.alcoholContent),
     // AI-suggested drinking window
-    drinkingWindowStart: data.drinkingWindowStart || null,
-    drinkingWindowEnd: data.drinkingWindowEnd || null,
+    drinkingWindowStart: sanitizeNumber(data.drinkingWindowStart),
+    drinkingWindowEnd: sanitizeNumber(data.drinkingWindowEnd),
     // Vivino-populated fields
-    vivinoRating: data.vivinoRating || null,
-    vivinoRatingsCount: data.vivinoRatingsCount || null,
+    vivinoRating: sanitizeNumber(data.vivinoRating),
+    vivinoRatingsCount: sanitizeNumber(data.vivinoRatingsCount),
     vivinoUrl: sanitizeString(data.vivinoUrl),
     body: sanitizeString(data.body),
     acidity: sanitizeString(data.acidity),
-    foodPairings: data.foodPairings || [],
+    foodPairings: sanitizeStringArray(data.foodPairings),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   };
@@ -150,14 +168,28 @@ export async function updateWine(
     }
   }
 
-  // Sanitize string fields before update
-  const sanitizedData: Record<string, unknown> = {};
+  // Sanitize all fields before update - Firestore doesn't accept undefined or NaN values
   const stringFields = ['name', 'winery', 'grapeVariety', 'region', 'country', 'tastingNotes', 'storageLocation', 'classification', 'vivinoUrl', 'body', 'acidity'];
+  const numberFields = ['vintage', 'price', 'rating', 'bottlesOwned', 'alcoholContent', 'drinkingWindowStart', 'drinkingWindowEnd', 'vivinoRating', 'vivinoRatingsCount'];
+  const arrayFields = ['foodPairings'];
+
+  const sanitizedData: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(data)) {
-    if (key === 'photo') continue; // Skip photo field
-    if (stringFields.includes(key) && typeof value === 'string') {
-      sanitizedData[key] = sanitizeString(value);
+    if (key === 'photo') continue; // Skip photo field - handled separately
+
+    if (stringFields.includes(key)) {
+      // Sanitize strings
+      sanitizedData[key] = sanitizeString(value as string);
+    } else if (numberFields.includes(key)) {
+      // Sanitize numbers - convert undefined/NaN to null
+      sanitizedData[key] = sanitizeNumber(value as number);
+    } else if (arrayFields.includes(key)) {
+      // Sanitize arrays
+      sanitizedData[key] = sanitizeStringArray(value as string[]);
+    } else if (value === undefined) {
+      // Convert undefined to null for any other field
+      sanitizedData[key] = null;
     } else {
       sanitizedData[key] = value;
     }

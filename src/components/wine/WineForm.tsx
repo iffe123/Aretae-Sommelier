@@ -373,7 +373,31 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     const validation = validateWineForm(formData);
     if (!validation.valid) {
       setValidationErrors(validation.errors);
-      setSubmitError('Please fix the errors above before submitting.');
+      // Create a more specific error message listing the problematic fields
+      const errorFields = Object.keys(validation.errors);
+      const fieldNames: Record<string, string> = {
+        name: 'Wine Name',
+        winery: 'Winery',
+        vintage: 'Vintage',
+        grapeVariety: 'Grape Variety',
+        region: 'Region',
+        country: 'Country',
+        price: 'Price',
+        bottlesOwned: 'Bottles Owned',
+        storageLocation: 'Storage Location',
+        tastingNotes: 'Tasting Notes',
+        alcoholContent: 'Alcohol %',
+        drinkingWindowStart: 'Drink From',
+        drinkingWindowEnd: 'Drink Until',
+        vivinoRating: 'Vivino Rating',
+        vivinoRatingsCount: 'Ratings Count',
+        vivinoUrl: 'Vivino URL',
+        body: 'Body',
+        acidity: 'Acidity',
+        foodPairings: 'Food Pairings',
+      };
+      const problemFields = errorFields.map(f => fieldNames[f] || f).join(', ');
+      setSubmitError(`Please fix the following: ${problemFields}`);
       return;
     }
 
@@ -846,6 +870,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           onChange={(e) =>
             setFormData({ ...formData, alcoholContent: e.target.value === "" ? undefined : parseFloat(e.target.value) })
           }
+          error={validationErrors.alcoholContent}
         />
 
         <Input
@@ -859,6 +884,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           onChange={(e) =>
             setFormData({ ...formData, drinkingWindowStart: e.target.value === "" ? undefined : parseInt(e.target.value) })
           }
+          error={validationErrors.drinkingWindowStart}
         />
 
         <Input
@@ -872,6 +898,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           onChange={(e) =>
             setFormData({ ...formData, drinkingWindowEnd: e.target.value === "" ? undefined : parseInt(e.target.value) })
           }
+          error={validationErrors.drinkingWindowEnd}
         />
       </div>
 

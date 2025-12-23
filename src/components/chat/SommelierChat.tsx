@@ -20,27 +20,27 @@ interface SommelierChatProps {
 }
 
 const SUGGESTED_PROMPTS = [
-  "What foods pair well with this wine?",
-  "What temperature should I serve this at?",
-  "Should I decant this wine?",
-  "How long can I cellar this wine?",
-  "Recommend similar wines to try",
+  "What food would be amazing with this?",
+  "How should I serve this wine?",
+  "Does this need decanting?",
+  "When's the perfect time to drink this?",
+  "What else would I love if I like this?",
 ];
 
 const GENERAL_PROMPTS = [
-  "What wine pairs with steak?",
-  "Explain the difference between Old World and New World wines",
-  "What's a good wine for beginners?",
-  "How do I read a wine label?",
-  "What's the proper way to taste wine?",
+  "What wine would blow my mind with a steak?",
+  "Old World vs New World - what's the deal?",
+  "I'm new to wine - where do I start?",
+  "Help me decode wine labels!",
+  "Teach me to taste like a pro!",
 ];
 
 const CELLAR_PROMPTS = [
-  "What wine from my cellar pairs with pasta?",
-  "What wines do I have from France?",
-  "Which of my wines should I drink soon?",
-  "What's a good red from my collection for guests?",
-  "Show me my best rated wines",
+  "What should I open with pasta tonight?",
+  "What gems do I have from France?",
+  "What wine should I drink soon before it's too late?",
+  "Pick a crowd-pleaser from my cellar!",
+  "What are my best bottles based on my ratings?",
 ];
 
 const MAX_CELLAR_WINES = 50;
@@ -221,15 +221,15 @@ export default function SommelierChat({
             </div>
             <h4 className="font-medium text-gray-900 mb-2">
               {wineContext
-                ? `Ask about ${wineContext.name}`
-                : "Your Personal Sommelier"}
+                ? `Let's talk about ${wineContext.name}!`
+                : "Hey, Wine Friend!"}
             </h4>
             <p className="text-sm text-gray-500 mb-6">
               {wineContext
-                ? "I can help with pairings, serving tips, and more for this wine."
+                ? "Ooh, great choice! I'd love to help with pairings, serving tips, or anything about this wine."
                 : cellarData && cellarData.wines.length > 0
-                  ? `I have access to your cellar of ${cellarData.wines.length} wines (${cellarData.totalBottles} bottles). Ask me for recommendations from your collection!`
-                  : "Ask me anything about wine - pairings, regions, techniques, and recommendations."}
+                  ? `I know your cellar of ${cellarData.wines.length} wines (${cellarData.totalBottles} bottles) and your taste! Let's find your next perfect pour.`
+                  : "I'm a total wine nerd and I'd love to chat about pairings, regions, hidden gems, or whatever's on your mind!"}
             </p>
 
             <div className="w-full space-y-2">

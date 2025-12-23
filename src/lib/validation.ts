@@ -16,6 +16,15 @@ export interface WineFormErrors {
   bottlesOwned?: string;
   storageLocation?: string;
   tastingNotes?: string;
+  alcoholContent?: string;
+  drinkingWindowStart?: string;
+  drinkingWindowEnd?: string;
+  vivinoRating?: string;
+  vivinoRatingsCount?: string;
+  vivinoUrl?: string;
+  body?: string;
+  acidity?: string;
+  foodPairings?: string;
 }
 
 // Character limits
@@ -129,6 +138,148 @@ export function validateBottlesOwned(count: number | string | undefined | null):
 }
 
 /**
+ * Validates alcohol content (optional, 0-25%)
+ */
+export function validateAlcoholContent(value: number | undefined | null): ValidationResult {
+  if (value === undefined || value === null) {
+    return { valid: true }; // Optional field
+  }
+
+  if (typeof value !== 'number' || isNaN(value)) {
+    return { valid: false, error: 'Alcohol % must be a valid number' };
+  }
+
+  if (value < 0 || value > 25) {
+    return { valid: false, error: 'Alcohol % must be between 0 and 25' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates drinking window years (optional, but end must be >= start if both provided)
+ */
+export function validateDrinkingWindow(
+  start: number | undefined | null,
+  end: number | undefined | null
+): { startError?: string; endError?: string; valid: boolean } {
+  const minYear = 1900;
+  const maxYear = 2100;
+
+  let valid = true;
+  let startError: string | undefined;
+  let endError: string | undefined;
+
+  if (start !== undefined && start !== null) {
+    if (typeof start !== 'number' || isNaN(start)) {
+      startError = 'Drink From must be a valid year';
+      valid = false;
+    } else if (start < minYear || start > maxYear) {
+      startError = `Drink From must be between ${minYear} and ${maxYear}`;
+      valid = false;
+    }
+  }
+
+  if (end !== undefined && end !== null) {
+    if (typeof end !== 'number' || isNaN(end)) {
+      endError = 'Drink Until must be a valid year';
+      valid = false;
+    } else if (end < minYear || end > maxYear) {
+      endError = `Drink Until must be between ${minYear} and ${maxYear}`;
+      valid = false;
+    }
+  }
+
+  // If both are provided and valid, check that end >= start
+  if (valid && start !== undefined && start !== null && end !== undefined && end !== null) {
+    if (end < start) {
+      endError = 'Drink Until must be after Drink From';
+      valid = false;
+    }
+  }
+
+  return { startError, endError, valid };
+}
+
+/**
+ * Validates Vivino rating (optional, 0-5 scale)
+ */
+export function validateVivinoRating(value: number | undefined | null): ValidationResult {
+  if (value === undefined || value === null) {
+    return { valid: true }; // Optional field
+  }
+
+  if (typeof value !== 'number' || isNaN(value)) {
+    return { valid: false, error: 'Vivino rating must be a valid number' };
+  }
+
+  if (value < 0 || value > 5) {
+    return { valid: false, error: 'Vivino rating must be between 0 and 5' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates Vivino ratings count (optional, non-negative integer)
+ */
+export function validateVivinoRatingsCount(value: number | undefined | null): ValidationResult {
+  if (value === undefined || value === null) {
+    return { valid: true }; // Optional field
+  }
+
+  if (typeof value !== 'number' || isNaN(value)) {
+    return { valid: false, error: 'Ratings count must be a valid number' };
+  }
+
+  if (value < 0) {
+    return { valid: false, error: 'Ratings count cannot be negative' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates URL format (optional)
+ */
+export function validateUrl(value: string | undefined | null): ValidationResult {
+  if (!value || !value.trim()) {
+    return { valid: true }; // Optional field
+  }
+
+  // Basic URL validation
+  try {
+    new URL(value);
+    return { valid: true };
+  } catch {
+    return { valid: false, error: 'Please enter a valid URL' };
+  }
+}
+
+/**
+ * Validates food pairings array (optional, array of non-empty strings)
+ */
+export function validateFoodPairings(value: string[] | undefined | null): ValidationResult {
+  if (!value || !Array.isArray(value)) {
+    return { valid: true }; // Optional field
+  }
+
+  // Check each item is a valid string
+  for (let i = 0; i < value.length; i++) {
+    if (typeof value[i] !== 'string') {
+      return { valid: false, error: 'Food pairings must be text values' };
+    }
+  }
+
+  // Check total length doesn't exceed reasonable limits
+  if (value.length > 50) {
+    return { valid: false, error: 'Too many food pairings (max 50)' };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Validates an email address
  */
 export function validateEmail(email: string): ValidationResult {
@@ -209,6 +360,15 @@ export function validateWineForm(data: {
   bottlesOwned?: number;
   storageLocation?: string;
   tastingNotes?: string;
+  alcoholContent?: number;
+  drinkingWindowStart?: number;
+  drinkingWindowEnd?: number;
+  vivinoRating?: number;
+  vivinoRatingsCount?: number;
+  vivinoUrl?: string;
+  body?: string;
+  acidity?: string;
+  foodPairings?: string[];
 }): { valid: boolean; errors: WineFormErrors } {
   const errors: WineFormErrors = {};
   let valid = true;
@@ -285,6 +445,62 @@ export function validateWineForm(data: {
 
   if (data.tastingNotes && data.tastingNotes.length > LIMITS.tastingNotes) {
     errors.tastingNotes = `Tasting notes must be ${LIMITS.tastingNotes} characters or less`;
+    valid = false;
+  }
+
+  // Validate alcohol content
+  const alcoholResult = validateAlcoholContent(data.alcoholContent);
+  if (!alcoholResult.valid) {
+    errors.alcoholContent = alcoholResult.error;
+    valid = false;
+  }
+
+  // Validate drinking window
+  const drinkingWindowResult = validateDrinkingWindow(data.drinkingWindowStart, data.drinkingWindowEnd);
+  if (!drinkingWindowResult.valid) {
+    if (drinkingWindowResult.startError) {
+      errors.drinkingWindowStart = drinkingWindowResult.startError;
+    }
+    if (drinkingWindowResult.endError) {
+      errors.drinkingWindowEnd = drinkingWindowResult.endError;
+    }
+    valid = false;
+  }
+
+  // Validate Vivino fields
+  const vivinoRatingResult = validateVivinoRating(data.vivinoRating);
+  if (!vivinoRatingResult.valid) {
+    errors.vivinoRating = vivinoRatingResult.error;
+    valid = false;
+  }
+
+  const vivinoCountResult = validateVivinoRatingsCount(data.vivinoRatingsCount);
+  if (!vivinoCountResult.valid) {
+    errors.vivinoRatingsCount = vivinoCountResult.error;
+    valid = false;
+  }
+
+  const vivinoUrlResult = validateUrl(data.vivinoUrl);
+  if (!vivinoUrlResult.valid) {
+    errors.vivinoUrl = vivinoUrlResult.error;
+    valid = false;
+  }
+
+  // Validate body and acidity string lengths
+  if (data.body && data.body.length > 100) {
+    errors.body = 'Body description is too long';
+    valid = false;
+  }
+
+  if (data.acidity && data.acidity.length > 100) {
+    errors.acidity = 'Acidity description is too long';
+    valid = false;
+  }
+
+  // Validate food pairings
+  const foodPairingsResult = validateFoodPairings(data.foodPairings);
+  if (!foodPairingsResult.valid) {
+    errors.foodPairings = foodPairingsResult.error;
     valid = false;
   }
 

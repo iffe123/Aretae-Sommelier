@@ -31,9 +31,9 @@ export default function WineCard({
       className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all duration-200 ${
         isSelectionMode
           ? isSelected
-            ? "border-wine-500 ring-2 ring-wine-500 shadow-md"
-            : "border-gray-100 hover:border-wine-300"
-          : "border-gray-100 hover:shadow-md"
+            ? "border-wine-500 ring-2 ring-wine-500 shadow-md scale-[0.98]"
+            : "border-gray-100 hover:border-wine-300 hover:shadow-md"
+          : "border-gray-100 card-hover"
       }`}
       onClick={handleClick}
     >

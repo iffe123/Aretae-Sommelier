@@ -7,7 +7,7 @@ import { Wine } from "@/types/wine";
 import { deleteWine } from "@/lib/wine-service";
 import Button from "@/components/ui/Button";
 import StarRating from "@/components/ui/StarRating";
-import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ToastContainer, useToast } from "@/components/ui/Toast";
 import SommelierChat from "@/components/chat/SommelierChat";
 import { getFirestoreErrorMessage } from "@/lib/error-utils";
@@ -359,34 +359,23 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
         title="Delete Wine"
-      >
-        <p className="text-gray-600 mb-6">
-          Are you sure you want to delete &quot;{wine.name}&quot; from your collection?
-          This action cannot be undone.
-        </p>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setShowDeleteConfirm(false)}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleDelete}
-            isLoading={deleting}
-            className="flex-1"
-          >
-            Delete
-          </Button>
-        </div>
-      </Modal>
+        message={
+          <>
+            Are you sure you want to delete <strong>&quot;{wine.name}&quot;</strong> from your collection?
+            This action cannot be undone.
+          </>
+        }
+        confirmText="Delete Wine"
+        cancelText="Keep Wine"
+        variant="danger"
+        isLoading={deleting}
+      />
 
       {/* Sommelier Chat */}
       <SommelierChat

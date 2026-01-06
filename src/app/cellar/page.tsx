@@ -294,7 +294,7 @@ export default function CellarPage() {
       {/* FAB - Add Wine */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-wine-600 hover:bg-wine-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-wine-600 hover:bg-wine-700 text-white rounded-full shadow-lg flex items-center justify-center z-30 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 fab-animated"
         aria-label="Add new wine"
       >
         <Plus className="w-6 h-6" aria-hidden="true" />

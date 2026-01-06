@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Wine, MessageCircle, Camera, Star } from "lucide-react";
@@ -10,6 +10,7 @@ import Link from "next/link";
 export default function HomePage() {
   const { user, loading, checkingRedirect } = useAuth();
   const router = useRouter();
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // Wait for BOTH auth loading AND redirect check to complete before redirecting
@@ -17,6 +18,12 @@ export default function HomePage() {
       router.push("/cellar");
     }
   }, [user, loading, checkingRedirect, router]);
+
+  // Trigger animations after component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Show loading state while checking auth OR processing OAuth redirect
   if (loading || checkingRedirect) {
@@ -63,19 +70,35 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[url('/wine-pattern.svg')] opacity-5" />
         <div className="relative max-w-7xl mx-auto px-4 py-16 sm:py-24">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full mb-6">
+            <div
+              className={`inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full mb-6 transition-all duration-700 ${
+                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"
+              }`}
+            >
               <Wine className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 font-[var(--font-playfair)]">
+            <h1
+              className={`text-4xl sm:text-5xl font-bold text-white mb-4 font-[var(--font-playfair)] transition-all duration-700 delay-100 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
               Aretae Sommelier
             </h1>
-            <p className="text-xl text-wine-100 mb-8 max-w-2xl mx-auto">
+            <p
+              className={`text-xl text-wine-100 mb-8 max-w-2xl mx-auto transition-all duration-700 delay-200 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
               Your personal wine cellar manager with AI-powered sommelier advice.
               Track, rate, and discover wines like never before.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div
+              className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-700 delay-300 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
               <Link href="/signup">
-                <Button size="lg" className="w-full sm:w-auto !bg-white !text-wine-800 hover:!bg-gray-100 font-semibold shadow-lg">
+                <Button size="lg" className="w-full sm:w-auto !bg-white !text-wine-800 hover:!bg-gray-100 font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all">
                   Get Started Free
                 </Button>
               </Link>
@@ -110,9 +133,12 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="text-center p-6 rounded-2xl bg-gray-50 hover:bg-wine-50 transition-colors"
+                className={`text-center p-6 rounded-2xl bg-gray-50 hover:bg-wine-50 hover:shadow-lg transition-all duration-300 card-hover ${
+                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: `${400 + index * 100}ms` }}
               >
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-wine-100 rounded-full mb-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-wine-100 rounded-full mb-4 group-hover:scale-110 transition-transform">
                   <feature.icon className="w-7 h-7 text-wine-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">

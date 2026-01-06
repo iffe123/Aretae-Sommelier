@@ -20,10 +20,10 @@ const icons = {
 };
 
 const styles = {
-  success: "bg-green-50 border-green-200 text-green-800",
-  error: "bg-red-50 border-red-200 text-red-800",
-  warning: "bg-amber-50 border-amber-200 text-amber-800",
-  info: "bg-blue-50 border-blue-200 text-blue-800",
+  success: "bg-white border-l-4 border-l-green-500 border-gray-200",
+  error: "bg-white border-l-4 border-l-red-500 border-gray-200",
+  warning: "bg-white border-l-4 border-l-amber-500 border-gray-200",
+  info: "bg-white border-l-4 border-l-blue-500 border-gray-200",
 };
 
 const iconStyles = {
@@ -31,6 +31,13 @@ const iconStyles = {
   error: "text-red-500",
   warning: "text-amber-500",
   info: "text-blue-500",
+};
+
+const progressStyles = {
+  success: "bg-green-500",
+  error: "bg-red-500",
+  warning: "bg-amber-500",
+  info: "bg-blue-500",
 };
 
 export default function Toast({
@@ -41,6 +48,7 @@ export default function Toast({
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const handleClose = useCallback(() => {
     setIsExiting(true);
@@ -51,14 +59,14 @@ export default function Toast({
   }, [onClose]);
 
   useEffect(() => {
-    if (duration > 0) {
+    if (duration > 0 && !isPaused) {
       const timer = setTimeout(() => {
         handleClose();
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [duration, handleClose]);
+  }, [duration, handleClose, isPaused]);
 
   if (!isVisible) return null;
 
@@ -67,22 +75,42 @@ export default function Toast({
   return (
     <div
       className={`
-        flex items-start gap-3 p-4 rounded-lg border shadow-lg
+        relative overflow-hidden rounded-lg border shadow-lg
         ${styles[type]}
-        ${isExiting ? "animate-fade-out" : "animate-fade-in"}
-        transition-all duration-200
+        ${isExiting ? "animate-toast-out" : "animate-toast-in"}
       `}
       role="alert"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
     >
-      <Icon className={`w-5 h-5 flex-shrink-0 ${iconStyles[type]}`} />
-      <p className="text-sm flex-1">{message}</p>
-      <button
-        onClick={handleClose}
-        className="flex-shrink-0 p-1 hover:bg-black/5 rounded transition-colors"
-        aria-label="Close notification"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      <div className="flex items-start gap-3 p-4">
+        <div className={`flex-shrink-0 p-1 rounded-full ${iconStyles[type]} bg-opacity-10`}>
+          <Icon className={`w-5 h-5 ${iconStyles[type]}`} />
+        </div>
+        <div className="flex-1 pt-0.5">
+          <p className="text-sm font-medium text-gray-900">{message}</p>
+        </div>
+        <button
+          onClick={handleClose}
+          className="flex-shrink-0 p-1.5 hover:bg-gray-100 rounded-full transition-colors group"
+          aria-label="Close notification"
+        >
+          <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      {duration > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100">
+          <div
+            className={`h-full ${progressStyles[type]} toast-progress`}
+            style={{
+              animationDuration: `${duration}ms`,
+              animationPlayState: isPaused ? "paused" : "running"
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

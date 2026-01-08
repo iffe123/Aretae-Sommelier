@@ -49,25 +49,24 @@ function formatEnvError(keys: string[], scope: "client" | "server"): string {
   return `[env] Missing or invalid environment variables (${scope}): ${keyList}. See README.md#environment-variables.`;
 }
 
-function validateEnv<const T extends EnvSchema>(schema: T, scope: "client" | "server") {
-  const missingKeys: T[number][] = [];
-  const data: Partial<Record<T[number], string>> = {};
+function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server") {
+  const missingKeys: string[] = [];
+  const data = {} as { [K in T[number]]: string };
 
   for (const key of schema) {
-    const typedKey = key as T[number];
-    const value = process.env[typedKey];
+    const value = process.env[key];
     if (!value || isPlaceholderValue(value)) {
-      missingKeys.push(typedKey);
+      missingKeys.push(key);
       continue;
     }
-    data[typedKey] = value;
+    data[key] = value;
   }
 
   if (missingKeys.length > 0) {
     return { valid: false, data, message: formatEnvError(missingKeys, scope) };
   }
 
-  return { valid: true, data: data as Record<T[number], string>, message: "" };
+  return { valid: true, data, message: "" };
 }
 
 let cachedServerEnv: ServerEnv | undefined;

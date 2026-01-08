@@ -85,6 +85,8 @@ export default function SommelierChat({
   const [loading, setLoading] = useState(false);
   const [cellarData, setCellarData] = useState<CellarData | null>(null);
   const [cellarLoading, setCellarLoading] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const cellarFetchedRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +104,25 @@ export default function SommelierChat({
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // Handle open/close animations
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      // Small delay to trigger animation
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+        });
+      });
+    } else if (isVisible) {
+      setIsAnimating(false);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isVisible]);
 
   // Fetch cellar data when chat opens (only once per session)
   useEffect(() => {
@@ -181,10 +202,24 @@ export default function SommelierChat({
       ? CELLAR_PROMPTS
       : GENERAL_PROMPTS;
 
-  if (!isOpen) return null;
+  if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:shadow-2xl sm:border border-gray-200">
+    <>
+      {/* Backdrop for mobile */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden transition-opacity duration-300 ${
+          isAnimating ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:shadow-2xl sm:border border-gray-200 transition-all duration-300 ease-out ${
+          isAnimating
+            ? "translate-y-0 sm:translate-y-0 sm:scale-100 opacity-100"
+            : "translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
+        }`}
+      >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-wine-600 text-white sm:rounded-t-2xl">
         <div className="flex items-center gap-3">
@@ -329,6 +364,7 @@ export default function SommelierChat({
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }

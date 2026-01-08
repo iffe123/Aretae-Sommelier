@@ -54,12 +54,13 @@ function validateEnv<const T extends EnvSchema>(schema: T, scope: "client" | "se
   const data: Partial<Record<T[number], string>> = {};
 
   for (const key of schema) {
-    const value = process.env[key];
+    const typedKey = key as T[number];
+    const value = process.env[typedKey];
     if (!value || isPlaceholderValue(value)) {
-      missingKeys.push(key);
+      missingKeys.push(typedKey);
       continue;
     }
-    data[key] = value;
+    data[typedKey] = value;
   }
 
   if (missingKeys.length > 0) {

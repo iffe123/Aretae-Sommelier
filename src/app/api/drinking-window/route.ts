@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error("Failed to parse drinking window response:", text, parseError);
       return NextResponse.json(
-        { error: "Could not analyze drinking window. Please try again.", rawResponse: text },
+        { error: "Could not analyze drinking window. Please try again." },
         { status: 422 }
       );
     }

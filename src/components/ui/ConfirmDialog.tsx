@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { AlertTriangle, Trash2, AlertCircle, HelpCircle } from "lucide-react";
+import { AlertTriangle, Trash2, HelpCircle } from "lucide-react";
 
 type DialogVariant = "danger" | "warning" | "info";
 

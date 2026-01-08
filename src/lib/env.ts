@@ -51,7 +51,7 @@ function formatEnvError(keys: string[], scope: "client" | "server"): string {
 
 function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server") {
   const missingKeys: string[] = [];
-  const data = {} as { [K in T[number]]: string };
+  const data: Record<string, string> = {};
 
   for (const key of schema) {
     const value = process.env[key];
@@ -79,18 +79,34 @@ export function getServerEnv(): ServerEnv {
     throw new Error(result.message);
   }
 
-  cachedServerEnv = result.data as ServerEnv;
+  cachedServerEnv = result.data as unknown as ServerEnv;
   return cachedServerEnv;
 }
 
 export function getClientEnv(): ClientEnv {
   const result = validateEnv(clientEnvSchema, "client");
   if (!result.valid) {
-    if (process.env.NODE_ENV === "production") {
+    // Only throw at runtime in production when the app is actually running
+    // During build/prerendering (NEXT_PHASE check) or SSR, use fallback values
+    const isRuntimeProduction = process.env.NODE_ENV === "production" && typeof window !== "undefined";
+    if (isRuntimeProduction) {
       throw new Error(result.message);
     }
-    console.warn(result.message);
+    // Log warning in development or during SSR/build
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(result.message);
+    }
+    // Return fallback values with empty strings for missing values
+    // This maintains type safety while allowing the app to build/run for development
+    return {
+      NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+      NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+    };
   }
 
-  return (result.valid ? (result.data as ClientEnv) : (process.env as ClientEnv));
+  return result.data as unknown as ClientEnv;
 }

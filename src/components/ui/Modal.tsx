@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState, useCallback } from "react";
+import { ReactNode, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -12,9 +12,6 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-
   const sizeClasses = {
     sm: "max-w-sm",
     md: "max-w-lg",
@@ -22,29 +19,17 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     xl: "max-w-4xl",
   };
 
+  // Handle body overflow
   useEffect(() => {
     if (isOpen) {
-      setIsVisible(true);
-      setIsAnimating(true);
       document.body.style.overflow = "hidden";
-    } else if (isVisible) {
-      setIsAnimating(false);
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-      }, 150);
-      return () => clearTimeout(timer);
+    } else {
+      document.body.style.overflow = "unset";
     }
-
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, isVisible]);
-
-  useEffect(() => {
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, []);
+  }, [isOpen]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -61,15 +46,13 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, handleClose]);
 
-  if (!isVisible) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${
-          isAnimating ? "animate-modal-backdrop-in" : "animate-modal-backdrop-out"
-        }`}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-modal-backdrop-in"
         onClick={handleClose}
         aria-hidden="true"
       />
@@ -77,9 +60,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       {/* Modal container */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className={`relative w-full ${sizeClasses[size]} rounded-2xl bg-white p-6 shadow-2xl ${
-            isAnimating ? "animate-modal-content-in" : "animate-modal-content-out"
-          }`}
+          className={`relative w-full ${sizeClasses[size]} rounded-2xl bg-white p-6 shadow-2xl animate-modal-content-in`}
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? "modal-title" : undefined}

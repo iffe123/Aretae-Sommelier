@@ -226,12 +226,43 @@ export async function getWine(wineId: string): Promise<Wine | null> {
   if (!docSnap.exists()) return null;
 
   const data = docSnap.data();
-  return {
+
+  // Explicitly map fields to ensure type safety and prevent unexpected data
+  const wine: Wine = {
     id: docSnap.id,
-    ...data,
-    createdAt: data.createdAt?.toDate(),
-    updatedAt: data.updatedAt?.toDate(),
-  } as Wine;
+    userId: data.userId ?? "",
+    name: data.name ?? "",
+    winery: data.winery ?? "",
+    vintage: data.vintage ?? new Date().getFullYear(),
+    grapeVariety: data.grapeVariety ?? "",
+    region: data.region ?? "",
+    country: data.country ?? "",
+    price: data.price ?? 0,
+    photoUrl: data.photoUrl,
+    rating: data.rating,
+    tastingNotes: data.tastingNotes,
+    bottlesOwned: data.bottlesOwned ?? 1,
+    storageLocation: data.storageLocation,
+    isWishlist: data.isWishlist ?? false,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    // Wine classification
+    wineType: data.wineType,
+    classification: data.classification,
+    alcoholContent: data.alcoholContent,
+    // Drinking window
+    drinkingWindowStart: data.drinkingWindowStart,
+    drinkingWindowEnd: data.drinkingWindowEnd,
+    // Vivino fields
+    vivinoRating: data.vivinoRating,
+    vivinoRatingsCount: data.vivinoRatingsCount,
+    vivinoUrl: data.vivinoUrl,
+    body: data.body,
+    acidity: data.acidity,
+    foodPairings: data.foodPairings,
+  };
+
+  return wine;
 }
 
 export async function getUserWines(
@@ -258,14 +289,40 @@ export async function getUserWines(
   q = query(q, orderBy(sortField, sortOrder));
 
   const querySnapshot = await getDocs(q);
-  let wines = querySnapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-    } as Wine;
+  let wines = querySnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    // Explicitly map fields to ensure type safety
+    const wine: Wine = {
+      id: docSnap.id,
+      userId: data.userId ?? "",
+      name: data.name ?? "",
+      winery: data.winery ?? "",
+      vintage: data.vintage ?? new Date().getFullYear(),
+      grapeVariety: data.grapeVariety ?? "",
+      region: data.region ?? "",
+      country: data.country ?? "",
+      price: data.price ?? 0,
+      photoUrl: data.photoUrl,
+      rating: data.rating,
+      tastingNotes: data.tastingNotes,
+      bottlesOwned: data.bottlesOwned ?? 1,
+      storageLocation: data.storageLocation,
+      isWishlist: data.isWishlist ?? false,
+      createdAt: data.createdAt?.toDate() ?? new Date(),
+      updatedAt: data.updatedAt?.toDate() ?? new Date(),
+      wineType: data.wineType,
+      classification: data.classification,
+      alcoholContent: data.alcoholContent,
+      drinkingWindowStart: data.drinkingWindowStart,
+      drinkingWindowEnd: data.drinkingWindowEnd,
+      vivinoRating: data.vivinoRating,
+      vivinoRatingsCount: data.vivinoRatingsCount,
+      vivinoUrl: data.vivinoUrl,
+      body: data.body,
+      acidity: data.acidity,
+      foodPairings: data.foodPairings,
+    };
+    return wine;
   });
 
   // Client-side filtering for text search

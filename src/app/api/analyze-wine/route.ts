@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error("Failed to parse Gemini response as JSON:", text, parseError);
       return NextResponse.json(
-        { error: "Could not parse wine label data. Please fill in details manually.", rawResponse: text },
+        { error: "Could not parse wine label data. Please fill in details manually." },
         { status: 422 }
       );
     }

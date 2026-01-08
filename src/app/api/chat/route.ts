@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
 
+/**
+ * Sanitize user input to prevent XSS and injection attacks
+ * Strips HTML tags and normalizes whitespace
+ */
+function sanitizeMessage(input: string): string {
+  if (!input) return "";
+  // Strip HTML tags
+  const withoutTags = input.replace(/<[^>]*>/g, "");
+  // Trim and normalize whitespace
+  return withoutTags.trim().replace(/\s+/g, " ");
+}
+
 const SOMMELIER_SYSTEM_PROMPT = `You are a passionate, cheerful wine nerd and expert sommelier who absolutely LOVES talking about wine! You have decades of experience but never come across as stuffy or pretentious - you're genuinely excited to share your knowledge and help people discover amazing wines.
 
 YOUR PERSONALITY:
@@ -237,6 +249,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sanitize user message to prevent XSS and injection attacks
+    const sanitizedMessage = sanitizeMessage(message);
+    if (!sanitizedMessage) {
+      return NextResponse.json(
+        { error: "Message cannot be empty" },
+        { status: 400 }
+      );
+    }
+
     // Build the full system prompt with all context
     let fullSystemPrompt = SOMMELIER_SYSTEM_PROMPT;
 
@@ -297,7 +318,7 @@ Focus your response on this specific wine when answering their question. Conside
 
     const chat = model.startChat({ history });
 
-    const result = await chat.sendMessage(message);
+    const result = await chat.sendMessage(sanitizedMessage);
     const response = await result.response;
     const text = response.text();
 

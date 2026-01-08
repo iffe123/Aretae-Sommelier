@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
 
 /**
  * Wine Lookup API Route (Gemini-powered with Web Search)
@@ -110,20 +111,13 @@ interface WineLookupData {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      console.error("GEMINI_API_KEY is not configured");
+    let apiKey: string;
+    try {
+      apiKey = getServerEnv().GEMINI_API_KEY;
+    } catch (error) {
+      console.error(error);
       return NextResponse.json(
-        { success: false, error: "Wine lookup service is not configured" },
-        { status: 500 }
-      );
-    }
-
-    if (typeof apiKey !== "string" || apiKey.trim().length === 0 || apiKey === "your_gemini_api_key_here") {
-      console.error("GEMINI_API_KEY appears to be invalid");
-      return NextResponse.json(
-        { success: false, error: "Wine lookup service is misconfigured" },
+        { success: false, error: ENV_PUBLIC_ERROR_MESSAGE },
         { status: 500 }
       );
     }

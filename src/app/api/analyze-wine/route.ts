@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
 
 const WINE_LABEL_PROMPT = `You are an expert sommelier and wine label analyst. Analyze this wine bottle label image and extract comprehensive information.
 
@@ -50,20 +51,13 @@ interface WineLabelData {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      console.error("GEMINI_API_KEY is not configured in environment variables");
+    let apiKey: string;
+    try {
+      apiKey = getServerEnv().GEMINI_API_KEY;
+    } catch (error) {
+      console.error(error);
       return NextResponse.json(
-        { error: "Wine analysis service is not configured. Please set GEMINI_API_KEY environment variable." },
-        { status: 500 }
-      );
-    }
-
-    if (typeof apiKey !== 'string' || apiKey.trim().length === 0 || apiKey === 'your_gemini_api_key_here') {
-      console.error("GEMINI_API_KEY appears to be invalid or placeholder value");
-      return NextResponse.json(
-        { error: "Wine analysis service is misconfigured. Please check your GEMINI_API_KEY." },
+        { error: ENV_PUBLIC_ERROR_MESSAGE },
         { status: 500 }
       );
     }

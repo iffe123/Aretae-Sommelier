@@ -87,6 +87,16 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
+#### Validation and error messages
+
+The app validates environment variables at runtime on both the server and client. If any required value is missing or left as a placeholder, the app will log a standardized message like:
+
+`[env] Missing or invalid environment variables (client|server): ...`
+
+API routes will respond with a consistent error payload:
+
+`Service is not configured. Please set required environment variables. See README.md#environment-variables.`
+
 ### Firebase Setup
 
 1. Create a new Firebase project at [Firebase Console](https://console.firebase.google.com/)

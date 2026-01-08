@@ -1,7 +1,7 @@
 export const ENV_PUBLIC_ERROR_MESSAGE =
   "Service is not configured. Please set required environment variables. See README.md#environment-variables.";
 
-type EnvSchema = Record<string, { required: true }>;
+type EnvSchema = readonly string[];
 
 const PLACEHOLDER_PATTERNS = [
   "your_api_key_here",
@@ -20,18 +20,16 @@ export function isPlaceholderValue(value?: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-const clientEnvSchema: EnvSchema = {
-  NEXT_PUBLIC_FIREBASE_API_KEY: { required: true },
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: { required: true },
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: { required: true },
-  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: { required: true },
-  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: { required: true },
-  NEXT_PUBLIC_FIREBASE_APP_ID: { required: true },
-};
+const clientEnvSchema = [
+  "NEXT_PUBLIC_FIREBASE_API_KEY",
+  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  "NEXT_PUBLIC_FIREBASE_APP_ID",
+] as const;
 
-const serverEnvSchema: EnvSchema = {
-  GEMINI_API_KEY: { required: true },
-};
+const serverEnvSchema = ["GEMINI_API_KEY"] as const;
 
 export interface ClientEnv {
   NEXT_PUBLIC_FIREBASE_API_KEY: string;
@@ -51,11 +49,11 @@ function formatEnvError(keys: string[], scope: "client" | "server"): string {
   return `[env] Missing or invalid environment variables (${scope}): ${keyList}. See README.md#environment-variables.`;
 }
 
-function validateEnv(schema: EnvSchema, scope: "client" | "server") {
+function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server") {
   const missingKeys: string[] = [];
-  const data: Record<string, string> = {};
+  const data = {} as { [K in T[number]]: string };
 
-  for (const key of Object.keys(schema)) {
+  for (const key of schema) {
     const value = process.env[key];
     if (!value || isPlaceholderValue(value)) {
       missingKeys.push(key);

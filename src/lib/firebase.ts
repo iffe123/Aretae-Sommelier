@@ -1,7 +1,13 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import {
+  getAuth,
+  Auth,
+  browserLocalPersistence,
+  setPersistence,
+} from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
+import { getClientEnv, isPlaceholderValue } from "@/lib/env";
 
 /**
  * Firebase Configuration
@@ -45,29 +51,16 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
  *    - Run: console.log('Firebase API Key:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY)
  *    - If undefined, check .env.local file and restart the dev server
  */
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+const clientEnv = getClientEnv();
 
-function isPlaceholderValue(value: unknown): boolean {
-  if (!value) return true;
-  const str = String(value).trim();
-  if (!str) return true;
-  // Common placeholders used in docs/examples.
-  return (
-    str === 'your_api_key_here' ||
-    str === 'your_project_id' ||
-    str === 'your_sender_id' ||
-    str === 'your_app_id' ||
-    str.includes('your_project') ||
-    str.includes('your_')
-  );
-}
+const firebaseConfig = {
+  apiKey: clientEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: clientEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: clientEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: clientEnv.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: clientEnv.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: clientEnv.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
 function isFirebaseConfigured(): boolean {
   // Firebase Auth SDK will throw at runtime if apiKey is missing/invalid.
@@ -88,9 +81,9 @@ let auth: Auth | undefined;
 let db: Firestore | undefined;
 let storage: FirebaseStorage | undefined;
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   // Check for missing configuration in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     const missingVars = Object.entries(firebaseConfig)
       .filter(([, value]) => !value)
       .map(([key]) => key);
@@ -105,7 +98,7 @@ if (typeof window !== 'undefined') {
   }
 
   if (!isFirebaseConfigured()) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       console.warn(
         '[Firebase] Firebase config is missing/placeholder. Running without Firebase enabled (auth/db/storage will be undefined).'
       );
@@ -144,7 +137,7 @@ if (typeof window !== 'undefined') {
   }
 
   // Log successful initialization in development
-  if (process.env.NODE_ENV === 'development' && app) {
+  if (process.env.NODE_ENV === "development" && app) {
     console.log('[Firebase] Initialized successfully for project:', firebaseConfig.projectId);
   }
 }

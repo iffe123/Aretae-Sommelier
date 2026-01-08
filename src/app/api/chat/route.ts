@@ -243,9 +243,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
     // Build the full system prompt with all context
     let fullSystemPrompt = SOMMELIER_SYSTEM_PROMPT;
 
@@ -260,20 +257,20 @@ export async function POST(request: NextRequest) {
         wineCount: typedCellarData.wines?.length || 0,
       });
       if (cellarSummary) {
-        fullSystemPrompt += CELLAR_AWARE_INSTRUCTIONS + cellarSummary;
+        fullSystemPrompt += `\n\nSYSTEM-INSTRUCTION APPENDIX: CELLAR CONTEXT\n` + CELLAR_AWARE_INSTRUCTIONS + cellarSummary;
       }
     } else {
       console.log("[Chat API] No cellar data provided to API");
     }
 
     // Add specific wine context if viewing a particular wine
-    let contextMessage = "";
     if (wineContext) {
       const wine = wineContext as WineContext;
       const currentYear = new Date().getFullYear();
       const wineAge = currentYear - wine.vintage;
-      
-      contextMessage = `\n\nThe user is currently viewing this specific wine from their collection:
+
+      fullSystemPrompt += `\n\nSYSTEM-INSTRUCTION APPENDIX: CURRENT WINE CONTEXT
+- The user is currently viewing this specific wine from their collection:
 - Name: ${wine.name}
 - Winery: ${wine.winery}
 - Vintage: ${wine.vintage} (${wineAge} years old)
@@ -293,28 +290,18 @@ ${wine.tastingNotes ? `- User's Tasting Notes: ${wine.tastingNotes}` : ""}
 Focus your response on this specific wine when answering their question. Consider its current age and likely drinking window.`;
     }
 
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      systemInstruction: fullSystemPrompt,
+    });
+
     const history = (conversationHistory as ChatMessage[] | undefined)?.map((msg) => ({
       role: msg.role,
       parts: [{ text: msg.content }],
     })) || [];
 
-    const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: fullSystemPrompt + contextMessage }],
-        },
-        {
-          role: "model",
-          parts: [
-            {
-              text: "Hey there, fellow wine lover! I'm so excited to chat with you about wine. Whether you want to explore your cellar, find the perfect pairing, or just geek out about grapes - I'm here for it! What's on your mind?",
-            },
-          ],
-        },
-        ...history,
-      ],
-    });
+    const chat = model.startChat({ history });
 
     const result = await chat.sendMessage(message);
     const response = await result.response;

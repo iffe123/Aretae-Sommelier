@@ -49,9 +49,9 @@ function formatEnvError(keys: string[], scope: "client" | "server"): string {
   return `[env] Missing or invalid environment variables (${scope}): ${keyList}. See README.md#environment-variables.`;
 }
 
-function validateEnv(schema: EnvSchema, scope: "client" | "server") {
+function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server") {
   const missingKeys: string[] = [];
-  const data: Record<string, string> = {};
+  const data = {} as { [K in T[number]]: string };
 
   for (const key of schema) {
     const value = process.env[key];

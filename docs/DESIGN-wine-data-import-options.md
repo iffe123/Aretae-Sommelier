@@ -196,7 +196,7 @@ Return a JSON object with:
 
 // Use Gemini with grounding (web search)
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-2.0-flash",
+  model: "gemini-2.5-flash-lite",
   tools: [{ googleSearch: {} }]  // Enable web search
 });
 ```
@@ -420,7 +420,7 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash-lite",
       // Enable Google Search grounding for accurate wine data
       tools: [{ googleSearch: {} }]
     });

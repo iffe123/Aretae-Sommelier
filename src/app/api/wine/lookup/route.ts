@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     
     // Use Gemini with Google Search grounding for accurate wine data
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash-lite",
       // Note: Google Search grounding may need to be enabled in your project
       // If not available, the model will still provide good results from training data
     });

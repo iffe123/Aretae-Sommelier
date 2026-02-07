@@ -59,7 +59,7 @@ function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server")
       missingKeys.push(key);
       continue;
     }
-    data[key] = value;
+    (data as Record<string, string>)[key] = value;
   }
 
   if (missingKeys.length > 0) {
@@ -92,5 +92,5 @@ export function getClientEnv(): ClientEnv {
     console.warn(result.message);
   }
 
-  return (result.valid ? (result.data as ClientEnv) : (process.env as ClientEnv));
+  return (result.valid ? (result.data as ClientEnv) : (process.env as unknown as ClientEnv));
 }

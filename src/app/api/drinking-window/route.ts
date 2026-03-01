@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
+import { authenticateRequest } from "@/lib/api-auth";
 
 const DRINKING_WINDOW_PROMPT = `You are an expert sommelier with deep knowledge of wine aging potential. Analyze the following wine and provide a precise drinking window recommendation.
 
@@ -52,6 +53,9 @@ interface DrinkingWindowResult {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth instanceof NextResponse) return auth;
+
     let apiKey: string;
     try {
       apiKey = getServerEnv().GEMINI_API_KEY;

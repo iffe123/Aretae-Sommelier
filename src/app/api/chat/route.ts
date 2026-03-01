@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
+import { authenticateRequest } from "@/lib/api-auth";
 
 const SOMMELIER_SYSTEM_PROMPT = `You are a passionate, cheerful wine nerd and expert sommelier who absolutely LOVES talking about wine! You have decades of experience but never come across as stuffy or pretentious - you're genuinely excited to share your knowledge and help people discover amazing wines.
 
@@ -200,6 +201,10 @@ function formatCellarSummary(cellarData: CellarData): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth instanceof NextResponse) return auth;
+    const { uid } = auth;
+
     let apiKey: string;
     try {
       apiKey = getServerEnv().GEMINI_API_KEY;
@@ -224,6 +229,7 @@ export async function POST(request: NextRequest) {
     const { message, wineContext, conversationHistory, cellarData } = requestBody;
 
     console.log("[Chat API] Received request:", {
+      uid,
       message: message?.substring(0, 50) + (message?.length > 50 ? "..." : ""),
       hasWineContext: !!wineContext,
       hasCellarData: !!cellarData,

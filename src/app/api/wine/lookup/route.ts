@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
+import { authenticateRequest } from "@/lib/api-auth";
 
 /**
  * Wine Lookup API Route (Gemini-powered with Web Search)
@@ -111,6 +112,9 @@ interface WineLookupData {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth instanceof NextResponse) return auth;
+
     let apiKey: string;
     try {
       apiKey = getServerEnv().GEMINI_API_KEY;

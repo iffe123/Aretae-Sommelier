@@ -169,11 +169,13 @@ export default function SommelierChat({
     setLoading(true);
 
     try {
+      const idToken = user ? await user.getIdToken() : undefined;
       const response = await chatWithSommelier(
         content,
         wineContext,
         messages,
-        cellarData || undefined
+        cellarData || undefined,
+        idToken
       );
       const assistantMessage: Message = { role: "model", content: response };
       setMessages((prev) => [...prev, assistantMessage]);

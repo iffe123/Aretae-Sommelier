@@ -25,13 +25,19 @@ export async function chatWithSommelier(
   message: string,
   wineContext?: Wine,
   conversationHistory?: { role: "user" | "model"; content: string }[],
-  cellarData?: CellarData
+  cellarData?: CellarData,
+  idToken?: string
 ): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (idToken) {
+    headers["Authorization"] = `Bearer ${idToken}`;
+  }
+
   const response = await fetch("/api/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       message,
       wineContext,

@@ -7,6 +7,7 @@ import {
   type VivinoWine,
   type VivinoSearchResult,
 } from "@/lib/vivino";
+import { authenticateRequest } from "@/lib/api-auth";
 
 /**
  * Vivino Wine Lookup API Route
@@ -58,6 +59,9 @@ type ApiResponse = SuccessResponse | ErrorResponse;
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse>> {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth instanceof NextResponse) return auth as NextResponse<ApiResponse>;
+
     const body: RequestBody = await request.json();
     const { action, query, vintage, wineId, limit = 10 } = body;
 

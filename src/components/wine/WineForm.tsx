@@ -11,6 +11,7 @@ import { Camera, X, Loader2, AlertCircle, Search, Wine as WineIcon, Star, Extern
 import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WineLabelData {
   name: string | null;
@@ -59,6 +60,7 @@ interface WineFormProps {
 }
 
 export default function WineForm({ initialData, onSubmit, onCancel }: WineFormProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -119,9 +121,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
     try {
       // Try Vivino first
+      const idToken = user ? await user.getIdToken() : "";
       const response = await fetch("/api/wine/vivino", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           action: "search",
           query: query.trim(),
@@ -166,9 +172,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
   // AI-powered wine lookup (fallback when Vivino is unavailable)
   const searchWithAI = async (query: string, vintage?: string) => {
     try {
+      const idToken = user ? await user.getIdToken() : "";
       const response = await fetch("/api/wine/lookup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           query: query.trim(),
           vintage,
@@ -269,10 +279,12 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     setAnalysisError(null);
 
     try {
+      const idToken = user ? await user.getIdToken() : "";
       const response = await fetch("/api/analyze-wine", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           imageBase64,

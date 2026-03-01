@@ -42,6 +42,7 @@ export interface ClientEnv {
 
 export interface ServerEnv {
   GEMINI_API_KEY: string;
+  FIREBASE_SERVICE_ACCOUNT_KEY?: string;
 }
 
 function formatEnvError(keys: string[], scope: "client" | "server"): string {
@@ -59,7 +60,7 @@ function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server")
       missingKeys.push(key);
       continue;
     }
-    data[key] = value;
+    (data as Record<string, string>)[key] = value;
   }
 
   if (missingKeys.length > 0) {
@@ -79,7 +80,15 @@ export function getServerEnv(): ServerEnv {
     throw new Error(result.message);
   }
 
-  cachedServerEnv = result.data as ServerEnv;
+  const env = result.data as ServerEnv;
+
+  // Add optional server env vars
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (serviceAccountKey && !isPlaceholderValue(serviceAccountKey)) {
+    env.FIREBASE_SERVICE_ACCOUNT_KEY = serviceAccountKey;
+  }
+
+  cachedServerEnv = env;
   return cachedServerEnv;
 }
 
@@ -92,5 +101,5 @@ export function getClientEnv(): ClientEnv {
     console.warn(result.message);
   }
 
-  return (result.valid ? (result.data as ClientEnv) : (process.env as ClientEnv));
+  return (result.valid ? (result.data as ClientEnv) : (process.env as unknown as ClientEnv));
 }

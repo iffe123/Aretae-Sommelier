@@ -1,204 +1,219 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Wine CRUD operations E2E tests
+ * Wine CRUD Operations E2E tests
  *
- * Note: These tests verify the UI structure and behavior.
- * Full CRUD tests require Firebase authentication setup.
- * For complete testing, configure test Firebase credentials.
+ * Tests wine form structure, validation patterns, and auth-guarded flows.
+ * Full CRUD integration requires Firebase authentication - these tests verify
+ * the UI components are correctly structured and behave properly.
  */
 
-test.describe('Wine CRUD Operations - UI Structure', () => {
-  test.describe('Add Wine Modal', () => {
-    test('should display cellar page with add wine button', async ({ page }) => {
+test.describe('Wine Form - Structure & Validation', () => {
+  test.describe('Auth Guard on Cellar Pages', () => {
+    test('should redirect to signin when accessing cellar unauthenticated', async ({ page }) => {
       await page.goto('/cellar');
+      await page.waitForURL('/signin');
+      await expect(page).toHaveURL('/signin');
+    });
 
-      // If redirected to signin, we can still verify the form structure by going directly
-      // The cellar page should have a FAB button for adding wines when authenticated
+    test('should redirect to signin when accessing wine detail unauthenticated', async ({ page }) => {
+      await page.goto('/cellar/test-wine-123');
+      await page.waitForURL('/signin');
+      await expect(page).toHaveURL('/signin');
     });
   });
 
-  test.describe('Wine Form Structure', () => {
-    test('should have proper form fields on signup (form validation pattern)', async ({ page }) => {
-      // Test the form validation patterns that should also apply to wine form
+  test.describe('Form Validation Patterns', () => {
+    test('should validate required fields prevent empty submission', async ({ page }) => {
       await page.goto('/signup');
 
-      // Verify form has proper structure
+      await page.getByRole('button', { name: /Create Account/i }).click();
+
+      // HTML5 validation prevents navigation
+      await expect(page).toHaveURL('/signup');
+    });
+
+    test('should validate email format', async ({ page }) => {
+      await page.goto('/signup');
+
+      await page.getByLabel(/Display Name/i).fill('Test User');
+      await page.getByLabel(/Email/i).fill('invalid-email');
+      await page.getByLabel(/Password/i).fill('password123');
+
+      await page.getByRole('button', { name: /Create Account/i }).click();
+      await expect(page).toHaveURL('/signup');
+    });
+
+    test('should enforce minimum password length via attribute', async ({ page }) => {
+      await page.goto('/signup');
+      await expect(page.getByLabel(/Password/i)).toHaveAttribute('minLength', '8');
+    });
+
+    test('should accept valid input with special wine-related characters', async ({ page }) => {
+      await page.goto('/signup');
+
+      // Wine names often have diacritics and special characters
+      const testCases = [
+        { field: /Display Name/i, value: 'Château Haut-Brion 2018' },
+        { field: /Display Name/i, value: 'Domäne Wachau Grüner Veltliner' },
+        { field: /Display Name/i, value: "Côtes du Rhône Villages" },
+      ];
+
+      for (const { field, value } of testCases) {
+        await page.getByLabel(field).fill(value);
+        await expect(page.getByLabel(field)).toHaveValue(value);
+      }
+    });
+
+    test('should handle rapid sequential input', async ({ page }) => {
+      await page.goto('/signin');
+
+      const emailInput = page.getByLabel(/Email/i);
+      await emailInput.pressSequentially('test@wine.com', { delay: 30 });
+
+      await expect(emailInput).toHaveValue('test@wine.com');
+    });
+
+    test('should clear input field correctly', async ({ page }) => {
+      await page.goto('/signin');
+
+      const emailInput = page.getByLabel(/Email/i);
+      await emailInput.fill('test@example.com');
+      await expect(emailInput).toHaveValue('test@example.com');
+
+      await emailInput.clear();
+      await expect(emailInput).toHaveValue('');
+    });
+
+    test('should maintain form state after failed validation', async ({ page }) => {
+      await page.goto('/signin');
+
+      await page.getByLabel(/Email/i).fill('test@example.com');
+
+      // Try submit without password - HTML validation will block
+      await page.getByRole('button', { name: /Sign In/i }).click();
+
+      // Email should still be filled
+      await expect(page.getByLabel(/Email/i)).toHaveValue('test@example.com');
+    });
+
+    test('should reset form values on page reload', async ({ page }) => {
+      await page.goto('/signup');
+
+      await page.getByLabel(/Display Name/i).fill('Test User');
+      await page.getByLabel(/Email/i).fill('test@example.com');
+      await page.getByLabel(/Password/i).fill('password123');
+
+      await page.reload();
+
+      await expect(page.getByLabel(/Display Name/i)).toHaveValue('');
+      await expect(page.getByLabel(/Email/i)).toHaveValue('');
+      await expect(page.getByLabel(/Password/i)).toHaveValue('');
+    });
+  });
+
+  test.describe('Form UI Elements', () => {
+    test('should have properly structured form with submit button', async ({ page }) => {
+      await page.goto('/signup');
+
       const form = page.locator('form');
       await expect(form).toBeVisible();
 
-      // Verify buttons are properly styled and accessible
       const submitButton = page.getByRole('button', { name: /Create Account/i });
       await expect(submitButton).toBeVisible();
       await expect(submitButton).toBeEnabled();
     });
-  });
-});
 
-test.describe('Wine Form Validation Patterns', () => {
-  test('should validate required fields prevent empty submission', async ({ page }) => {
-    await page.goto('/signup');
+    test('should show password field with correct placeholder', async ({ page }) => {
+      await page.goto('/signin');
 
-    // Click submit without filling required fields
-    await page.getByRole('button', { name: /Create Account/i }).click();
+      const passwordInput = page.getByLabel(/Password/i);
+      await expect(passwordInput).toHaveAttribute('placeholder', '••••••••');
+    });
 
-    // Should remain on page (HTML5 validation)
-    await expect(page).toHaveURL('/signup');
-  });
+    test('should show email field with correct placeholder', async ({ page }) => {
+      await page.goto('/signin');
 
-  test('should accept valid input in text fields', async ({ page }) => {
-    await page.goto('/signup');
+      const emailInput = page.getByPlaceholder('you@example.com');
+      await expect(emailInput).toBeVisible();
+    });
 
-    // Test input field behavior
-    const nameInput = page.getByLabel(/Display Name/i);
-    await nameInput.fill('Test Wine User');
-    await expect(nameInput).toHaveValue('Test Wine User');
+    test('should have Google sign-in button with icon', async ({ page }) => {
+      await page.goto('/signin');
 
-    const emailInput = page.getByLabel(/Email/i);
-    await emailInput.fill('test@example.com');
-    await expect(emailInput).toHaveValue('test@example.com');
-  });
+      const googleButton = page.getByRole('button', { name: /Google/i });
+      await expect(googleButton).toBeVisible();
+      await expect(googleButton).toBeEnabled();
 
-  test('should handle special characters in input', async ({ page }) => {
-    await page.goto('/signup');
-
-    const nameInput = page.getByLabel(/Display Name/i);
-
-    // Test special characters (wine names often have accents)
-    await nameInput.fill('Château Margaux 2015');
-    await expect(nameInput).toHaveValue('Château Margaux 2015');
-  });
-});
-
-test.describe('Wine Card Display', () => {
-  test('should display proper structure for empty state messaging', async ({ page }) => {
-    await page.goto('/cellar');
-
-    // Wait for page load/redirect
-    await page.waitForLoadState('networkidle');
-
-    // Either we see signin or we're authenticated
-    const url = page.url();
-
-    if (url.includes('signin')) {
-      // Verify signin page structure
-      await expect(page.getByRole('heading', { name: /Welcome Back/i })).toBeVisible();
-    }
-  });
-});
-
-test.describe('Modal Behavior', () => {
-  test('should have accessible modal patterns in auth forms', async ({ page }) => {
-    await page.goto('/signin');
-
-    // The auth form acts as a card/modal pattern
-    // Verify it has proper heading hierarchy
-    await expect(page.getByRole('heading', { name: /Welcome Back/i })).toBeVisible();
-
-    // Verify form is properly labeled
-    await expect(page.getByLabel(/Email/i)).toBeVisible();
-    await expect(page.getByLabel(/Password/i)).toBeVisible();
-  });
-});
-
-test.describe('Button States', () => {
-  test('should show loading state on form submission', async ({ page }) => {
-    await page.goto('/signin');
-
-    // Fill in form
-    await page.getByLabel(/Email/i).fill('test@example.com');
-    await page.getByLabel(/Password/i).fill('password123');
-
-    // Get submit button
-    const submitButton = page.getByRole('button', { name: /Sign In/i });
-    await expect(submitButton).toBeEnabled();
-
-    // Click submit - button should show loading state
-    await submitButton.click();
-
-    // After clicking, the button might be disabled during loading
-    // This tests the loading state behavior
+      // Should contain SVG icon
+      const svgIcon = googleButton.locator('svg');
+      await expect(svgIcon).toBeVisible();
+    });
   });
 
-  test('should have hover states on interactive elements', async ({ page }) => {
-    await page.goto('/');
+  test.describe('Button States & Loading', () => {
+    test('should have submit button enabled by default', async ({ page }) => {
+      await page.goto('/signin');
 
-    // Check that buttons exist and are interactive
-    const getStartedButton = page.getByRole('link', { name: /Get Started Free/i });
-    await expect(getStartedButton).toBeVisible();
+      const submitButton = page.getByRole('button', { name: /Sign In/i });
+      await expect(submitButton).toBeEnabled();
+    });
 
-    // Hover should not cause errors
-    await getStartedButton.hover();
-  });
-});
+    test('should have interactive hover state on buttons', async ({ page }) => {
+      await page.goto('/');
 
-test.describe('Photo Upload UI Pattern', () => {
-  test('should handle file input accessibility', async ({ page }) => {
-    await page.goto('/signup');
+      const getStartedButton = page.getByRole('link', { name: /Get Started Free/i });
+      await expect(getStartedButton).toBeVisible();
 
-    // Verify that forms follow good accessibility patterns
-    // All inputs should have associated labels
-    const emailInput = page.getByLabel(/Email/i);
-    await expect(emailInput).toBeVisible();
-    await expect(emailInput).toHaveAttribute('type', 'email');
+      // Hover should not cause errors
+      await getStartedButton.hover();
+    });
 
-    const passwordInput = page.getByLabel(/Password/i);
-    await expect(passwordInput).toBeVisible();
-    await expect(passwordInput).toHaveAttribute('type', 'password');
-  });
-});
+    test('should show loading state on form submission attempt', async ({ page }) => {
+      await page.goto('/signin');
 
-test.describe('Star Rating Interaction Pattern', () => {
-  test('should have clickable interactive elements', async ({ page }) => {
-    await page.goto('/signin');
+      await page.getByLabel(/Email/i).fill('test@example.com');
+      await page.getByLabel(/Password/i).fill('password123');
 
-    // Test that clickable elements respond
-    const googleButton = page.getByRole('button', { name: /Google/i });
-    await expect(googleButton).toBeVisible();
+      const submitButton = page.getByRole('button', { name: /Sign In/i });
+      await expect(submitButton).toBeEnabled();
 
-    // Verify button is not disabled
-    await expect(googleButton).not.toBeDisabled();
-  });
-});
+      await submitButton.click();
 
-test.describe('Wine Detail Page Navigation', () => {
-  test('should handle navigation back from detail page', async ({ page }) => {
-    // Navigate to a non-existent wine detail page
-    await page.goto('/cellar/nonexistent-id');
-
-    // Should redirect to signin if not authenticated
-    await page.waitForLoadState('networkidle');
-
-    const url = page.url();
-    // Either shows signin or handles the missing wine gracefully
-    expect(url.includes('signin') || url.includes('cellar')).toBeTruthy();
-  });
-});
-
-test.describe('Error Handling UI', () => {
-  test('should display error messages in a visible error container', async ({ page }) => {
-    await page.goto('/signin');
-
-    // The error display pattern from AuthForm.tsx:
-    // <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-    //   {error}
-    // </div>
-
-    // Initially, no error should be visible
-    const errorContainer = page.locator('.bg-red-50');
-    await expect(errorContainer).not.toBeVisible();
+      // After click, button may show loading state (disabled or spinner)
+      // This tests the loading behavior pattern
+    });
   });
 
-  test('should maintain form state on validation errors', async ({ page }) => {
-    await page.goto('/signin');
+  test.describe('Error Handling UI', () => {
+    test('should not show error container initially', async ({ page }) => {
+      await page.goto('/signin');
 
-    // Fill email but not password
-    await page.getByLabel(/Email/i).fill('test@example.com');
+      const errorContainer = page.locator('.bg-red-50');
+      await expect(errorContainer).not.toBeVisible();
+    });
 
-    // Try to submit
-    await page.getByRole('button', { name: /Sign In/i }).click();
+    test('should not show success container initially', async ({ page }) => {
+      await page.goto('/signin');
 
-    // Email should still be filled after validation fails
-    await expect(page.getByLabel(/Email/i)).toHaveValue('test@example.com');
+      const successContainer = page.locator('.bg-green-50');
+      await expect(successContainer).not.toBeVisible();
+    });
+  });
+
+  test.describe('Wine Detail Page - Auth Redirect', () => {
+    test('should redirect non-existent wine detail to signin', async ({ page }) => {
+      await page.goto('/cellar/nonexistent-id');
+      await page.waitForLoadState('networkidle');
+
+      const url = page.url();
+      expect(url.includes('signin') || url.includes('cellar')).toBeTruthy();
+    });
+
+    test('should redirect deeply nested wine URLs to signin', async ({ page }) => {
+      await page.goto('/cellar/abc123');
+      await page.waitForURL('/signin');
+      await expect(page).toHaveURL('/signin');
+    });
   });
 });

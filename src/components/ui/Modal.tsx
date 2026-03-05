@@ -12,6 +12,7 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
+  const [prevIsOpen, setPrevIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -22,13 +23,23 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     xl: "max-w-4xl",
   };
 
-  useEffect(() => {
+  // Adjust state during render when isOpen prop changes
+  // See: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setIsVisible(true);
       setIsAnimating(true);
+    } else {
+      setIsAnimating(false);
+    }
+  }
+
+  // Handle side effects: body overflow and close animation delay
+  useEffect(() => {
+    if (isOpen) {
       document.body.style.overflow = "hidden";
     } else if (isVisible) {
-      setIsAnimating(false);
       const timer = setTimeout(() => {
         setIsVisible(false);
       }, 150);

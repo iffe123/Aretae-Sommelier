@@ -8,7 +8,7 @@ import Button from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function HomePage() {
-  const { user, loading, checkingRedirect } = useAuth();
+  const { user, loading, checkingRedirect, firebaseConfigured } = useAuth();
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
 
@@ -31,6 +31,33 @@ export default function HomePage() {
       <div className="min-h-screen flex items-center justify-center bg-wine-600">
         <div className="animate-pulse">
           <Wine className="w-16 h-16 text-white" />
+        </div>
+      </div>
+    );
+  }
+
+  // Show configuration error when Firebase env vars are missing
+  if (!firebaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wine-600 via-wine-700 to-wine-800 p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <Wine className="w-12 h-12 text-wine-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Configuration Required</h1>
+          <p className="text-gray-600 mb-4">
+            Firebase environment variables are not configured. Please set the required
+            environment variables in your deployment settings.
+          </p>
+          <div className="bg-gray-50 rounded-lg p-4 text-left text-sm text-gray-500">
+            <p className="font-medium text-gray-700 mb-2">Required variables:</p>
+            <ul className="space-y-1 font-mono text-xs">
+              <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
+              <li>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</li>
+              <li>NEXT_PUBLIC_FIREBASE_PROJECT_ID</li>
+              <li>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</li>
+              <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
+              <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+            </ul>
+          </div>
         </div>
       </div>
     );

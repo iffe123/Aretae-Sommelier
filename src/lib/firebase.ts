@@ -98,14 +98,9 @@ if (typeof window !== "undefined") {
   }
 
   if (!isFirebaseConfigured()) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        '[Firebase] Firebase config is missing/placeholder. Running without Firebase enabled (auth/db/storage will be undefined).'
-      );
-    } else {
-      // In production we should fail fast: the app cannot function without Firebase.
-      throw new Error('[Firebase] Missing Firebase configuration in production.');
-    }
+    console.warn(
+      '[Firebase] Firebase config is missing/placeholder. Running without Firebase enabled (auth/db/storage will be undefined).'
+    );
   } else {
     try {
       app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -140,6 +135,10 @@ if (typeof window !== "undefined") {
   if (process.env.NODE_ENV === "development" && app) {
     console.log('[Firebase] Initialized successfully for project:', firebaseConfig.projectId);
   }
+}
+
+export function isFirebaseAvailable(): boolean {
+  return app !== undefined;
 }
 
 export { app, auth, db, storage };

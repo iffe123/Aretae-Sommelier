@@ -19,7 +19,7 @@ import {
   sendPasswordResetEmail,
   getIdToken,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseAvailable } from "@/lib/firebase";
 
 // Development-only logging helper
 const debugLog = (...args: unknown[]) => {
@@ -32,6 +32,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   checkingRedirect: boolean;
+  firebaseConfigured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, checkingRedirect, signIn, signUp, signInWithGoogle, signOut, resetPassword }}
+      value={{ user, loading, checkingRedirect, firebaseConfigured: isFirebaseAvailable(), signIn, signUp, signInWithGoogle, signOut, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

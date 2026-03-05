@@ -95,9 +95,9 @@ export function getServerEnv(): ServerEnv {
 export function getClientEnv(): ClientEnv {
   const result = validateEnv(clientEnvSchema, "client");
   if (!result.valid) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(result.message);
-    }
+    // Warn but never throw — firebase.ts already guards against missing config
+    // at runtime via isFirebaseConfigured(). Throwing here breaks `next build`
+    // static page generation when env vars are not yet injected.
     console.warn(result.message);
   }
 

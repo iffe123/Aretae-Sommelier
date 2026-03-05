@@ -74,7 +74,16 @@ export function getAuthErrorMessage(error: unknown): string {
     return 'Request timed out. Please try again.';
   }
 
-  // Default fallback
+  // If it's a plain Error (e.g. "Firebase auth not initialized"), show its message
+  if (errorMessage && !errorCode) {
+    return errorMessage;
+  }
+
+  // Default fallback — include the code so users can report it
+  if (errorCode) {
+    return `An error occurred (${errorCode}). Please try again.`;
+  }
+
   return 'An error occurred. Please try again.';
 }
 

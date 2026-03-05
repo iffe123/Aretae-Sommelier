@@ -36,7 +36,7 @@ describe('getAuthErrorMessage', () => {
 
   it('returns fallback for unknown errors', () => {
     const error = { code: 'auth/unknown-code' };
-    expect(getAuthErrorMessage(error)).toBe('An error occurred. Please try again.');
+    expect(getAuthErrorMessage(error)).toBe('An error occurred (auth/unknown-code). Please try again.');
   });
 
   it('handles error with no code or message', () => {

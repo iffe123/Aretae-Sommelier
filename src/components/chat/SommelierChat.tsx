@@ -200,10 +200,17 @@ export default function SommelierChat({
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Chat error:", error);
+      const errorText = error instanceof Error ? error.message.toLowerCase() : "";
+      const userFacingMessage =
+        errorText.includes("invalid or expired token")
+          ? "Your session expired. Please sign out and sign in again."
+          : errorText.includes("server auth configuration error")
+            ? "Server auth is misconfigured (Firebase Admin key). Please verify Vercel environment variables."
+            : "I apologize, but I'm having trouble connecting right now. Please try again in a moment.";
+
       const errorMessage: Message = {
         role: "model",
-        content:
-          "I apologize, but I'm having trouble connecting right now. Please try again in a moment.",
+        content: userFacingMessage,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {

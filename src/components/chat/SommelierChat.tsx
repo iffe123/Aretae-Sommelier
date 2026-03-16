@@ -169,14 +169,33 @@ export default function SommelierChat({
     setLoading(true);
 
     try {
-      const idToken = user ? await user.getIdToken() : undefined;
-      const response = await chatWithSommelier(
-        content,
-        wineContext,
-        messages,
-        cellarData || undefined,
-        idToken
-      );
+      const getChatResponse = async (forceRefreshToken = false) => {
+        const idToken = user ? await user.getIdToken(forceRefreshToken) : undefined;
+        return chatWithSommelier(
+          content,
+          wineContext,
+          messages,
+          cellarData || undefined,
+          idToken
+        );
+      };
+
+      let response: string;
+      try {
+        response = await getChatResponse();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "";
+        const shouldRetryWithFreshToken =
+          !!user &&
+          errorMessage.toLowerCase().includes("invalid or expired token");
+
+        if (!shouldRetryWithFreshToken) {
+          throw error;
+        }
+
+        response = await getChatResponse(true);
+      }
+
       const assistantMessage: Message = { role: "model", content: response };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {

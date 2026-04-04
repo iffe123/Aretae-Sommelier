@@ -155,7 +155,6 @@ describe('getDrinkingWindowInfo', () => {
   });
 
   it('returns approaching-peak when at peak year', () => {
-    const peakYear = currentYear;
     const wine = makeWine({
       drinkingWindowStart: currentYear - 5,
       drinkingWindowEnd: currentYear + 5,

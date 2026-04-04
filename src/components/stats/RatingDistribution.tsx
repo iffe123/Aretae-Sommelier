@@ -7,11 +7,11 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts";
 import { Wine } from "@/types/wine";
 import { Star } from "lucide-react";
+import { useMeasuredContainer } from "./useMeasuredContainer";
 
 interface RatingDistributionProps {
   wines: Wine[];
@@ -26,6 +26,8 @@ const RATING_COLORS = {
 };
 
 export default function RatingDistribution({ wines }: RatingDistributionProps) {
+  const { ref: chartContainerRef, size } = useMeasuredContainer<HTMLDivElement>();
+
   const data = useMemo(() => {
     const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
@@ -46,7 +48,7 @@ export default function RatingDistribution({ wines }: RatingDistributionProps) {
 
   if (ratedWines === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-w-0">
         <div className="flex items-center gap-2 mb-4">
           <Star className="w-5 h-5 text-amber-400" />
           <h3 className="font-semibold text-gray-900">Rating Distribution</h3>
@@ -59,15 +61,21 @@ export default function RatingDistribution({ wines }: RatingDistributionProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
         <h3 className="font-semibold text-gray-900">Rating Distribution</h3>
       </div>
 
-      <div className="h-48 sm:h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 20 }}>
+      <div ref={chartContainerRef} className="h-48 sm:h-56">
+        {size.width > 0 && size.height > 0 ? (
+          <BarChart
+            width={size.width}
+            height={size.height}
+            data={data}
+            layout="vertical"
+            margin={{ left: 0, right: 20 }}
+          >
             <XAxis type="number" allowDecimals={false} />
             <YAxis
               dataKey="rating"
@@ -97,7 +105,7 @@ export default function RatingDistribution({ wines }: RatingDistributionProps) {
               ))}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        ) : null}
       </div>
 
       <p className="text-xs text-gray-400 text-center mt-2">
@@ -111,7 +119,7 @@ const SKELETON_WIDTHS = ["60%", "40%", "80%", "30%", "50%"];
 
 export function RatingDistributionSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-5 h-5 bg-gray-200 rounded" />
         <div className="h-5 w-36 bg-gray-200 rounded" />

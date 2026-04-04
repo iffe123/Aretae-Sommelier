@@ -60,15 +60,18 @@ test.describe('Authentication', () => {
     test('should have correct input types and attributes', async ({ page }) => {
       const emailInput = page.getByLabel(/Email/i);
       await expect(emailInput).toHaveAttribute('type', 'email');
+      await expect(emailInput).toHaveAttribute('autocomplete', 'email');
       await expect(emailInput).toHaveAttribute('required', '');
 
       const passwordInput = page.getByLabel(/Password/i);
       await expect(passwordInput).toHaveAttribute('type', 'password');
+      await expect(passwordInput).toHaveAttribute('autocomplete', 'new-password');
       await expect(passwordInput).toHaveAttribute('required', '');
       await expect(passwordInput).toHaveAttribute('minLength', '8');
 
       const nameInput = page.getByLabel(/Display Name/i);
       await expect(nameInput).toHaveAttribute('type', 'text');
+      await expect(nameInput).toHaveAttribute('autocomplete', 'name');
       await expect(nameInput).toHaveAttribute('required', '');
     });
 
@@ -171,6 +174,11 @@ test.describe('Authentication', () => {
       await page.getByLabel(/Password/i).click();
 
       await expect(page.getByLabel(/Email/i)).toHaveValue('test@example.com');
+    });
+
+    test('should expose autofill-friendly auth attributes', async ({ page }) => {
+      await expect(page.getByLabel(/Email/i)).toHaveAttribute('autocomplete', 'email');
+      await expect(page.getByLabel(/Password/i)).toHaveAttribute('autocomplete', 'current-password');
     });
 
     test('should navigate to signup page via link', async ({ page }) => {

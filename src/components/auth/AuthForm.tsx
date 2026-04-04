@@ -48,11 +48,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setSuccessMessage("");
     setLoading(true);
 
+    const normalizedEmail = email.trim();
+    const normalizedDisplayName = displayName.trim();
+
     try {
       if (mode === "signup") {
-        await signUp(email, password, displayName);
+        await signUp(normalizedEmail, password, normalizedDisplayName);
       } else {
-        await signIn(email, password);
+        await signIn(normalizedEmail, password);
       }
       router.push("/cellar");
     } catch (err: unknown) {
@@ -88,7 +91,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setError("");
     setSuccessMessage("");
 
-    if (!email) {
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
       setError("Please enter your email address.");
       return;
     }
@@ -96,7 +101,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setLoading(true);
 
     try {
-      await resetPassword(email);
+      await resetPassword(normalizedEmail);
       setSuccessMessage("Password reset email sent! Check your inbox.");
       setShowForgotPassword(false);
     } catch (err: unknown) {
@@ -167,6 +172,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
               />
 
@@ -195,6 +204,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Your name"
+                  autoComplete="name"
                   required
                 />
               )}
@@ -206,6 +216,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
               />
 
@@ -217,6 +231,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   required
                   minLength={8}
                 />

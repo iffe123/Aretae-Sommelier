@@ -20,15 +20,6 @@ export function isPlaceholderValue(value?: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-const clientEnvSchema = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
-] as const;
-
 const serverEnvSchema = ["GEMINI_API_KEY"] as const;
 
 export interface ClientEnv {

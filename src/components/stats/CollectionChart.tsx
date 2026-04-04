@@ -5,10 +5,10 @@ import {
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
   Tooltip,
 } from "recharts";
 import { Wine } from "@/types/wine";
+import { useMeasuredContainer } from "./useMeasuredContainer";
 
 interface CollectionChartProps {
   wines: Wine[];
@@ -32,6 +32,8 @@ export default function CollectionChart({
   title,
   icon,
 }: CollectionChartProps) {
+  const { ref: chartContainerRef, size } = useMeasuredContainer<HTMLDivElement>();
+
   const data = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -60,7 +62,7 @@ export default function CollectionChart({
 
   if (wines.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-w-0">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-xl">{icon}</span>
           <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -73,15 +75,15 @@ export default function CollectionChart({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xl">{icon}</span>
         <h3 className="font-semibold text-gray-900">{title}</h3>
       </div>
 
-      <div className="h-48 sm:h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+      <div ref={chartContainerRef} className="h-48 sm:h-56">
+        {size.width > 0 && size.height > 0 ? (
+          <PieChart width={size.width} height={size.height}>
             <Pie
               data={data}
               cx="50%"
@@ -115,7 +117,7 @@ export default function CollectionChart({
               }}
             />
           </PieChart>
-        </ResponsiveContainer>
+        ) : null}
       </div>
 
       {/* Legend */}
@@ -139,7 +141,7 @@ export default function CollectionChart({
 
 export function CollectionChartSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-6 h-6 bg-gray-200 rounded" />
         <div className="h-5 w-32 bg-gray-200 rounded" />

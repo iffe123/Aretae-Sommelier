@@ -37,7 +37,7 @@ export function getAuthErrorMessage(error: unknown): string {
 
     // Sign-up errors
     'auth/email-already-in-use': 'An account with this email already exists. Try signing in instead.',
-    'auth/weak-password': 'Password is too weak. Please use at least 6 characters.',
+    'auth/weak-password': 'Password is too weak. Please use at least 8 characters.',
     'auth/operation-not-allowed': 'This sign-in method is not enabled. Please contact support.',
 
     // Password reset errors
@@ -79,8 +79,8 @@ export function getAuthErrorMessage(error: unknown): string {
     return errorMessage;
   }
 
-  // Default fallback — include the code so users can report it
-  if (errorCode) {
+  // Unknown auth codes are useful in development, but noisy in production.
+  if (errorCode && process.env.NODE_ENV === "development") {
     return `An error occurred (${errorCode}). Please try again.`;
   }
 

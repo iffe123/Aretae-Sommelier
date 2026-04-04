@@ -180,6 +180,10 @@ service firebase.storage {
 }
 ```
 
+## Product Notes
+
+- Assessment and roadmap: [`docs/ASSESSMENT-and-improvement-plan.md`](docs/ASSESSMENT-and-improvement-plan.md)
+
 ## Scripts
 
 - `npm run dev` - Start development server

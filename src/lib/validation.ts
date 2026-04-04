@@ -71,7 +71,7 @@ export function validateLength(value: string, maxLength: number, fieldName: stri
  */
 export function validateVintage(year: number | string | undefined | null): ValidationResult {
   if (year === undefined || year === null || year === '') {
-    return { valid: false, error: 'Vintage is required' };
+    return { valid: true }; // Optional field
   }
 
   const yearNum = typeof year === 'string' ? parseInt(year, 10) : year;
@@ -92,7 +92,7 @@ export function validateVintage(year: number | string | undefined | null): Valid
  */
 export function validatePrice(price: number | string | undefined | null): ValidationResult {
   if (price === undefined || price === null || price === '') {
-    return { valid: false, error: 'Price is required' };
+    return { valid: true }; // Optional field
   }
 
   const priceNum = typeof price === 'string' ? parseFloat(price) : price;
@@ -398,29 +398,17 @@ export function validateWineForm(data: {
     valid = false;
   }
 
-  const grapeResult = validateRequired(data.grapeVariety, 'Grape variety');
-  if (!grapeResult.valid) {
-    errors.grapeVariety = grapeResult.error;
-    valid = false;
-  } else if (data.grapeVariety && data.grapeVariety.length > LIMITS.grapeVariety) {
+  if (data.grapeVariety && data.grapeVariety.length > LIMITS.grapeVariety) {
     errors.grapeVariety = `Grape variety must be ${LIMITS.grapeVariety} characters or less`;
     valid = false;
   }
 
-  const regionResult = validateRequired(data.region, 'Region');
-  if (!regionResult.valid) {
-    errors.region = regionResult.error;
-    valid = false;
-  } else if (data.region && data.region.length > LIMITS.region) {
+  if (data.region && data.region.length > LIMITS.region) {
     errors.region = `Region must be ${LIMITS.region} characters or less`;
     valid = false;
   }
 
-  const countryResult = validateRequired(data.country, 'Country');
-  if (!countryResult.valid) {
-    errors.country = countryResult.error;
-    valid = false;
-  } else if (data.country && data.country.length > LIMITS.country) {
+  if (data.country && data.country.length > LIMITS.country) {
     errors.country = `Country must be ${LIMITS.country} characters or less`;
     valid = false;
   }

@@ -750,7 +750,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
         <Input
           id="vintage"
-          label="Vintage *"
+          label="Vintage"
           type="number"
           min={1900}
           max={new Date().getFullYear()}
@@ -759,7 +759,6 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             setFormData({ ...formData, vintage: parseInt(e.target.value) || 0 })
           }
           error={validationErrors.vintage}
-          required
         />
 
         <Select
@@ -777,7 +776,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
         <Input
           id="grapeVariety"
-          label="Grape Variety *"
+          label="Grape Variety"
           value={formData.grapeVariety}
           onChange={(e) =>
             setFormData({ ...formData, grapeVariety: e.target.value })
@@ -785,7 +784,6 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
           placeholder="e.g., Cabernet Sauvignon"
           maxLength={LIMITS.grapeVariety}
           error={validationErrors.grapeVariety}
-          required
         />
 
         <Input
@@ -804,24 +802,22 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
       <div className="grid grid-cols-2 gap-4">
         <Input
           id="region"
-          label="Region *"
+          label="Region"
           value={formData.region}
           onChange={(e) => setFormData({ ...formData, region: e.target.value })}
           placeholder="e.g., Bordeaux"
           maxLength={LIMITS.region}
           error={validationErrors.region}
-          required
         />
 
         <Input
           id="country"
-          label="Country *"
+          label="Country"
           value={formData.country}
           onChange={(e) => setFormData({ ...formData, country: e.target.value })}
           placeholder="e.g., France"
           maxLength={LIMITS.country}
           error={validationErrors.country}
-          required
         />
       </div>
 
@@ -829,7 +825,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
       <div className="grid grid-cols-2 gap-4">
         <Input
           id="price"
-          label="Price (kr) *"
+          label="Price (kr)"
           type="number"
           min={0}
           step={0.01}
@@ -839,7 +835,6 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
             setFormData({ ...formData, price: e.target.value === '' ? undefined : parseFloat(e.target.value) })
           }
           error={validationErrors.price}
-          required
         />
 
         <Input

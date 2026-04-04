@@ -63,12 +63,12 @@ describe('validateLength', () => {
 });
 
 describe('validateVintage', () => {
-  it('returns invalid for undefined', () => {
-    expect(validateVintage(undefined).valid).toBe(false);
+  it('returns valid for undefined (optional)', () => {
+    expect(validateVintage(undefined).valid).toBe(true);
   });
 
-  it('returns invalid for empty string', () => {
-    expect(validateVintage('').valid).toBe(false);
+  it('returns valid for empty string (optional)', () => {
+    expect(validateVintage('').valid).toBe(true);
   });
 
   it('returns invalid for non-numeric string', () => {
@@ -99,12 +99,12 @@ describe('validateVintage', () => {
 });
 
 describe('validatePrice', () => {
-  it('returns invalid for undefined', () => {
-    expect(validatePrice(undefined).valid).toBe(false);
+  it('returns valid for undefined (optional)', () => {
+    expect(validatePrice(undefined).valid).toBe(true);
   });
 
-  it('returns invalid for empty string', () => {
-    expect(validatePrice('').valid).toBe(false);
+  it('returns valid for empty string (optional)', () => {
+    expect(validatePrice('').valid).toBe(true);
   });
 
   it('returns invalid for non-numeric string', () => {
@@ -360,11 +360,6 @@ describe('validateWineForm', () => {
   const validData = {
     name: 'Chateau Margaux',
     winery: 'Chateau Margaux',
-    vintage: 2015,
-    grapeVariety: 'Cabernet Sauvignon',
-    region: 'Bordeaux',
-    country: 'France',
-    price: 250,
   };
 
   it('returns valid for complete valid data', () => {
@@ -391,10 +386,22 @@ describe('validateWineForm', () => {
     expect(result.errors.winery).toBeDefined();
   });
 
-  it('returns invalid for bad vintage', () => {
+  it('returns invalid for bad vintage when provided', () => {
     const result = validateWineForm({ ...validData, vintage: 1800 });
     expect(result.valid).toBe(false);
     expect(result.errors.vintage).toBeDefined();
+  });
+
+  it('returns valid when optional wine detail fields are omitted', () => {
+    const result = validateWineForm({
+      ...validData,
+      vintage: undefined,
+      grapeVariety: undefined,
+      region: undefined,
+      country: undefined,
+      price: undefined,
+    });
+    expect(result.valid).toBe(true);
   });
 
   it('validates optional fields when provided', () => {

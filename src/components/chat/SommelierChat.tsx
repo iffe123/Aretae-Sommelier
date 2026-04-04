@@ -163,6 +163,17 @@ export default function SommelierChat({
   const sendMessage = async (content: string) => {
     if (!content.trim() || loading) return;
 
+    if (!user) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "model",
+          content: "Please sign in to use the AI sommelier.",
+        },
+      ]);
+      return;
+    }
+
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -185,9 +196,13 @@ export default function SommelierChat({
         response = await getChatResponse();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "";
+        const normalizedError = errorMessage.toLowerCase();
         const shouldRetryWithFreshToken =
           !!user &&
-          errorMessage.toLowerCase().includes("invalid or expired token");
+          (normalizedError.includes("invalid or expired token") ||
+            normalizedError.includes("missing authorization") ||
+            normalizedError.includes("missing token") ||
+            normalizedError.includes("401"));
 
         if (!shouldRetryWithFreshToken) {
           throw error;
@@ -202,8 +217,10 @@ export default function SommelierChat({
       console.error("Chat error:", error);
       const errorText = error instanceof Error ? error.message.toLowerCase() : "";
       const userFacingMessage =
-        errorText.includes("invalid or expired token")
-          ? "Your session expired. Please sign out and sign in again."
+        errorText.includes("invalid or expired token") ||
+        errorText.includes("missing authorization") ||
+        errorText.includes("missing token")
+          ? "Your session needs to be refreshed. Please try sending your message again. If this continues, sign out and sign in again."
           : errorText.includes("server auth configuration error")
             ? "Server auth is misconfigured (Firebase Admin key). Please verify Vercel environment variables."
             : "I apologize, but I'm having trouble connecting right now. Please try again in a moment.";

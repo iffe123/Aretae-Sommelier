@@ -9,6 +9,10 @@ function isFirebaseAdminConfigError(error: unknown): boolean {
   return (
     code.includes("app/invalid-credential") ||
     message.includes("failed to parse firebase_service_account_key") ||
+    message.includes("firebase admin credentials are not configured") ||
+    message.includes("firebase token verification fallback is not configured") ||
+    message.includes("next_public_firebase_api_key") ||
+    message.includes("api_key_invalid") ||
     message.includes("default credentials") ||
     message.includes("could not load the default credentials") ||
     message.includes("metadata")

@@ -5,8 +5,9 @@ import { Wine } from "@/types/wine";
 import { chatWithSommelier, CellarData, CellarWineSummary } from "@/lib/gemini";
 import { getUserWines } from "@/lib/wine-service";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildFeedbackMailto } from "@/lib/feedback";
 import Button from "@/components/ui/Button";
-import { Send, Wine as WineIcon, Bot, User, X } from "lucide-react";
+import { Send, Wine as WineIcon, Bot, User, X, Mail, Sparkles } from "lucide-react";
 
 interface Message {
   role: "user" | "model";
@@ -230,6 +231,21 @@ export default function SommelierChat({
       ? CELLAR_PROMPTS
       : GENERAL_PROMPTS;
 
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  const latestAssistantMessage = [...messages].reverse().find((message) => message.role === "model");
+
+  const handleSendFeedback = () => {
+    const href = buildFeedbackMailto({
+      title: wineContext ? `Sommelier feedback for ${wineContext.name}` : "Sommelier feedback",
+      page: wineContext ? `Sommelier chat - ${wineContext.name}` : "Sommelier chat",
+      source: typeof window !== "undefined" ? window.location.href : "/cellar",
+      userMessage: latestUserMessage?.content,
+      assistantMessage: latestAssistantMessage?.content,
+    });
+
+    window.location.href = href;
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -242,21 +258,28 @@ export default function SommelierChat({
         onClick={onClose}
       />
       <div
-        className={`fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:shadow-2xl sm:border border-gray-200 transition-all duration-300 ease-out ${
+        className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-[#fcfaf8] sm:inset-auto sm:right-4 sm:bottom-4 sm:h-[640px] sm:w-[420px] sm:rounded-[28px] sm:border sm:border-white/70 sm:shadow-[0_30px_90px_-40px_rgba(77,20,30,0.65)] transition-all duration-300 ease-out ${
           isAnimating
             ? "translate-y-0 sm:translate-y-0 sm:scale-100 opacity-100"
             : "translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
         }`}
       >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-wine-600 text-white sm:rounded-t-2xl">
+      <div className="relative border-b border-white/20 bg-[linear-gradient(135deg,#722734_0%,#8f3946_52%,#b66b61_100%)] px-5 py-4 text-white sm:rounded-t-[28px]">
+        <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-white/12 blur-2xl" />
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-wine-500 rounded-full flex items-center justify-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
             <Bot className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="font-semibold">Sommelier</h3>
-            <p className="text-xs text-wine-200">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold">Sommelier</h3>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[11px] uppercase tracking-[0.2em] text-white/80">
+                <Sparkles className="h-3 w-3" />
+                Live
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-wine-100/90">
               {wineContext
                 ? `Discussing: ${wineContext.name}`
                 : cellarLoading
@@ -266,28 +289,37 @@ export default function SommelierChat({
                     : "Your wine expert"}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleSendFeedback}
+            className="hidden rounded-full border border-white/20 bg-white/10 p-2 transition-colors hover:bg-white/15 sm:block"
+            aria-label="Send feedback about sommelier"
+            title="Send feedback"
+          >
+            <Mail className="h-4 w-4" />
+          </button>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-wine-500 rounded-full transition-colors"
+          className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-white/12 sm:right-3 sm:top-3"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
+      <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff3ec_0%,#fcfaf8_42%,#f7f3f1_100%)] p-4 space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-4">
-            <div className="w-16 h-16 bg-wine-100 rounded-full flex items-center justify-center mb-4">
+          <div className="flex h-full flex-col items-center justify-center p-4 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] bg-white shadow-sm ring-1 ring-wine-100">
               <WineIcon className="w-8 h-8 text-wine-500" />
             </div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="mb-2 font-medium text-gray-900">
               {wineContext
                 ? `Let's talk about ${wineContext.name}!`
                 : "Hey, Wine Friend!"}
             </h4>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="mb-6 max-w-sm text-sm leading-6 text-gray-600">
               {wineContext
                 ? "Ooh, great choice! I'd love to help with pairings, serving tips, or anything about this wine."
                 : cellarData && cellarData.wines.length > 0
@@ -295,15 +327,32 @@ export default function SommelierChat({
                   : "I'm a total wine nerd and I'd love to chat about pairings, regions, hidden gems, or whatever's on your mind!"}
             </p>
 
+            <div className="mb-5 grid w-full gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/70 bg-white/80 p-4 text-left shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Knows</p>
+                <p className="mt-2 text-sm font-medium text-gray-900">
+                  {cellarData && cellarData.wines.length > 0
+                    ? `Your recent ${Math.min(cellarData.wines.length, MAX_CELLAR_WINES)} wines`
+                    : "Food pairings, serving tips, and buying advice"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/80 p-4 text-left shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Best use</p>
+                <p className="mt-2 text-sm font-medium text-gray-900">
+                  Ask a specific dinner, bottle, grape, or region question for sharper answers.
+                </p>
+              </div>
+            </div>
+
             <div className="w-full space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">
+              <p className="text-xs uppercase tracking-[0.22em] text-gray-400">
                 Try asking
               </p>
               {suggestedPrompts.slice(0, 3).map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
-                  className="w-full text-left text-sm p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-gray-700"
+                  className="w-full rounded-2xl border border-white/80 bg-white/85 p-3 text-left text-sm text-gray-700 shadow-sm transition-colors hover:bg-white"
                 >
                   {prompt}
                 </button>
@@ -320,8 +369,8 @@ export default function SommelierChat({
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    message.role === "user" ? "bg-wine-100" : "bg-gray-100"
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl ${
+                    message.role === "user" ? "bg-wine-100" : "bg-white ring-1 ring-wine-100"
                   }`}
                 >
                   {message.role === "user" ? (
@@ -333,8 +382,8 @@ export default function SommelierChat({
                 <div
                   className={`max-w-[80%] p-3 rounded-2xl ${
                     message.role === "user"
-                      ? "bg-wine-600 text-white rounded-tr-none"
-                      : "bg-gray-100 text-gray-800 rounded-tl-none"
+                      ? "rounded-tr-none bg-[linear-gradient(135deg,#7c2c39_0%,#984453_100%)] text-white shadow-sm"
+                      : "rounded-tl-none border border-rose-100/70 bg-white/95 text-gray-800 shadow-sm"
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -343,10 +392,10 @@ export default function SommelierChat({
             ))}
             {loading && (
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white ring-1 ring-wine-100">
                   <Bot className="w-4 h-4 text-gray-600" />
                 </div>
-                <div className="bg-gray-100 p-3 rounded-2xl rounded-tl-none">
+                <div className="rounded-2xl rounded-tl-none border border-rose-100/70 bg-white/95 p-3 shadow-sm">
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                     <span
@@ -369,7 +418,7 @@ export default function SommelierChat({
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="p-4 border-t bg-gray-50 sm:rounded-b-2xl"
+        className="border-t border-wine-100/70 bg-white/80 p-4 backdrop-blur sm:rounded-b-[28px]"
       >
         <div className="flex gap-2">
           <input
@@ -378,7 +427,7 @@ export default function SommelierChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask your sommelier..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-wine-500 focus:border-transparent"
+            className="flex-1 rounded-full border border-wine-100 bg-white px-4 py-2 shadow-inner shadow-wine-50/40 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wine-500"
             disabled={loading}
             aria-label="Message to sommelier"
           />
@@ -390,6 +439,17 @@ export default function SommelierChat({
           >
             <Send className="w-4 h-4" aria-hidden="true" />
           </Button>
+        </div>
+        <div className="mt-3 flex items-center justify-between px-1 text-xs text-gray-500">
+          <p>Spot a weird reply or rough edge? Send it with one tap.</p>
+          <button
+            type="button"
+            onClick={handleSendFeedback}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium text-wine-700 transition-colors hover:bg-wine-50"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Send feedback
+          </button>
         </div>
       </form>
       </div>

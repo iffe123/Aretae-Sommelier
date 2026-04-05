@@ -1,8 +1,6 @@
 export const ENV_PUBLIC_ERROR_MESSAGE =
   "Service is not configured. Please set required environment variables. See README.md#environment-variables.";
 
-type EnvSchema = readonly string[];
-
 const PLACEHOLDER_PATTERNS = [
   "your_api_key_here",
   "your_project_id",
@@ -10,6 +8,7 @@ const PLACEHOLDER_PATTERNS = [
   "your_app_id",
   "your_project",
   "your_gemini_api_key_here",
+  "your_ai_gateway_api_key_here",
   "your_",
 ];
 
@@ -19,8 +18,6 @@ export function isPlaceholderValue(value?: string): boolean {
   if (!normalized) return true;
   return PLACEHOLDER_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
-
-const serverEnvSchema = ["GEMINI_API_KEY"] as const;
 
 export interface ClientEnv {
   NEXT_PUBLIC_FIREBASE_API_KEY: string;
@@ -32,7 +29,12 @@ export interface ClientEnv {
 }
 
 export interface ServerEnv {
-  GEMINI_API_KEY: string;
+  GEMINI_API_KEY?: string;
+  AI_GATEWAY_API_KEY?: string;
+  VERCEL_OIDC_TOKEN?: string;
+  AI_PRIMARY_MODEL?: string;
+  AI_VISION_MODEL?: string;
+  AI_FALLBACK_MODELS?: string;
   FIREBASE_SERVICE_ACCOUNT_KEY?: string;
 }
 
@@ -41,37 +43,40 @@ function formatEnvError(keys: string[], scope: "client" | "server"): string {
   return `[env] Missing or invalid environment variables (${scope}): ${keyList}. See README.md#environment-variables.`;
 }
 
-function validateEnv<T extends EnvSchema>(schema: T, scope: "client" | "server") {
-  const missingKeys: string[] = [];
-  const data = {} as { [K in T[number]]: string };
-
-  for (const key of schema) {
-    const value = process.env[key];
-    if (!value || isPlaceholderValue(value)) {
-      missingKeys.push(key);
-      continue;
-    }
-    (data as Record<string, string>)[key] = value;
-  }
-
-  if (missingKeys.length > 0) {
-    return { valid: false, data, message: formatEnvError(missingKeys, scope) };
-  }
-
-  return { valid: true, data, message: "" };
-}
-
 let cachedServerEnv: ServerEnv | undefined;
+
+function readOptionalServerEnv(key: string): string | undefined {
+  const value = process.env[key];
+  if (!value || isPlaceholderValue(value)) {
+    return undefined;
+  }
+
+  return value;
+}
 
 export function getServerEnv(): ServerEnv {
   if (cachedServerEnv) return cachedServerEnv;
 
-  const result = validateEnv(serverEnvSchema, "server");
-  if (!result.valid) {
-    throw new Error(result.message);
-  }
+  const env: ServerEnv = {
+    GEMINI_API_KEY: readOptionalServerEnv("GEMINI_API_KEY"),
+    AI_GATEWAY_API_KEY: readOptionalServerEnv("AI_GATEWAY_API_KEY"),
+    VERCEL_OIDC_TOKEN: readOptionalServerEnv("VERCEL_OIDC_TOKEN"),
+    AI_PRIMARY_MODEL: readOptionalServerEnv("AI_PRIMARY_MODEL"),
+    AI_VISION_MODEL: readOptionalServerEnv("AI_VISION_MODEL"),
+    AI_FALLBACK_MODELS: readOptionalServerEnv("AI_FALLBACK_MODELS"),
+  };
 
-  const env = result.data as ServerEnv;
+  const hasGatewayAuth = Boolean(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN);
+  const hasDirectModelAuth = Boolean(env.GEMINI_API_KEY);
+
+  if (!hasGatewayAuth && !hasDirectModelAuth) {
+    throw new Error(
+      formatEnvError(
+        ["AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN", "GEMINI_API_KEY"],
+        "server"
+      )
+    );
+  }
 
   // Add optional server env vars
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;

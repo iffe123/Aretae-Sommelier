@@ -209,6 +209,16 @@ service firebase.storage {
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm test` - Run unit tests
+- `npm run test:unit` - Run Vitest directly
+- `npm run test:e2e` - Run Playwright E2E tests
+- `npm run test:all` - Run unit tests followed by E2E tests
+
+## Testing
+
+- Use `npm test` for the fast local safety net.
+- Use `npm run test:e2e` when you want the browser suite.
+- GitHub Actions runs lint, unit tests, a production build, and Playwright in CI so browser setup no longer depends on the local machine.
 
 ## License
 

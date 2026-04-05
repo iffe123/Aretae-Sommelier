@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { isPlaceholderValue } from "@/lib/env";
 
 let adminApp: App | undefined;
@@ -122,4 +123,13 @@ export async function verifyIdToken(token: string): Promise<{ uid: string }> {
   }
 
   return verifyIdTokenWithRestFallback(token);
+}
+
+export function getAdminFirestore(): Firestore | null {
+  if (!getServiceAccountKey()) {
+    return null;
+  }
+
+  const app = getAdminApp();
+  return getFirestore(app);
 }

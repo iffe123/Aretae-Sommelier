@@ -6,6 +6,7 @@ const initializeAppMock = vi.fn();
 const certMock = vi.fn();
 const verifyIdTokenMock = vi.fn();
 const getAuthMock = vi.fn();
+const getFirestoreMock = vi.fn();
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock("firebase-admin/app", () => ({
@@ -16,6 +17,10 @@ vi.mock("firebase-admin/app", () => ({
 
 vi.mock("firebase-admin/auth", () => ({
   getAuth: getAuthMock,
+}));
+
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: getFirestoreMock,
 }));
 
 async function loadFirebaseAdminModule() {
@@ -30,6 +35,7 @@ beforeEach(() => {
   certMock.mockReset();
   verifyIdTokenMock.mockReset();
   getAuthMock.mockReset();
+  getFirestoreMock.mockReset();
 
   getAppsMock.mockReturnValue([]);
   initializeAppMock.mockReturnValue({ name: "mock-admin-app" });
@@ -37,6 +43,7 @@ beforeEach(() => {
   getAuthMock.mockReturnValue({
     verifyIdToken: verifyIdTokenMock,
   });
+  getFirestoreMock.mockReturnValue({ name: "mock-firestore" });
   consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -129,5 +136,29 @@ describe("verifyIdToken", () => {
     const { verifyIdToken } = await loadFirebaseAdminModule();
 
     await expect(verifyIdToken("bad-token")).rejects.toThrow("INVALID_ID_TOKEN");
+  });
+});
+
+describe("getAdminFirestore", () => {
+  it("returns null when no service account key is configured", async () => {
+    delete process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    const { getAdminFirestore } = await loadFirebaseAdminModule();
+
+    expect(getAdminFirestore()).toBeNull();
+    expect(getFirestoreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a Firestore instance when admin credentials are available", async () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = JSON.stringify({
+      project_id: "demo-project",
+      private_key: "fake-key",
+      client_email: "demo@example.com",
+    });
+
+    const { getAdminFirestore } = await loadFirebaseAdminModule();
+
+    expect(getAdminFirestore()).toEqual({ name: "mock-firestore" });
+    expect(getFirestoreMock).toHaveBeenCalledTimes(1);
   });
 });

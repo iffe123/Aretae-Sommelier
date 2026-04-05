@@ -15,7 +15,7 @@ import Button from "@/components/ui/Button";
 import NetworkStatus from "@/components/ui/NetworkStatus";
 import { addWine } from "@/lib/wine-service";
 import { getFirestoreErrorMessage } from "@/lib/error-utils";
-import { buildFeedbackMailto } from "@/lib/feedback";
+import { openFeedbackDraft } from "@/lib/feedback-client";
 import {
   Wine as WineIcon,
   Plus,
@@ -165,14 +165,18 @@ export default function CellarPage() {
   };
 
   const handleSendFeedback = () => {
-    const href = buildFeedbackMailto({
+    setShowUserMenu(false);
+
+    openFeedbackDraft({
       title: "Cellar beta feedback",
       page: "Cellar dashboard",
-      source: typeof window !== "undefined" ? window.location.href : "/cellar",
+      category: "cellar",
+      details: {
+        wine_count: wines.length,
+        selection_mode: isSelectionMode,
+        selected_wines: selectedWines.length,
+      },
     });
-
-    setShowUserMenu(false);
-    window.location.href = href;
   };
 
   if (authLoading || checkingRedirect) {

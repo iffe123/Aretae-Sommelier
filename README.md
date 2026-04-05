@@ -94,6 +94,12 @@ AI_GATEWAY_API_KEY=your_ai_gateway_api_key_here
 # Direct Google fallback (recommended even when Gateway is enabled)
 GEMINI_API_KEY=your_gemini_api_key_here
 
+# Recommended for Firebase Admin auth verification and shared AI rate limiting
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+
+# Optional: send feedback drafts to a real inbox instead of a blank mail composer
+NEXT_PUBLIC_FEEDBACK_EMAIL=you@example.com
+
 # Optional model overrides
 AI_PRIMARY_MODEL=openai/gpt-5.4-mini
 AI_VISION_MODEL=openai/gpt-5.4-mini
@@ -159,7 +165,9 @@ API routes will respond with a consistent error payload:
    npx vercel env pull .env.local
    ```
 3. Add a Google fallback key in Vercel or `.env.local` as `GEMINI_API_KEY`
-4. Optional: override models with `AI_PRIMARY_MODEL`, `AI_VISION_MODEL`, or `AI_FALLBACK_MODELS`
+4. Recommended: add `FIREBASE_SERVICE_ACCOUNT_KEY` so server-side auth verification and shared AI rate limiting can use Firebase Admin instead of local memory fallback
+5. Optional: set `NEXT_PUBLIC_FEEDBACK_EMAIL` to route beta feedback drafts to your inbox
+6. Optional: override models with `AI_PRIMARY_MODEL`, `AI_VISION_MODEL`, or `AI_FALLBACK_MODELS`
 
 ## Deployment
 
@@ -219,6 +227,7 @@ service firebase.storage {
 - Use `npm test` for the fast local safety net.
 - Use `npm run test:e2e` when you want the browser suite.
 - GitHub Actions runs lint, unit tests, a production build, and Playwright in CI so browser setup no longer depends on the local machine.
+- AI routes now include built-in per-user rate limiting, with Firebase Admin-backed shared counters when `FIREBASE_SERVICE_ACCOUNT_KEY` is configured.
 
 ## License
 

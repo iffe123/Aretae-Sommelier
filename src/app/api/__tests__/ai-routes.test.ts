@@ -9,9 +9,24 @@ const analyzeWineLabelImageMock = vi.hoisted(() => vi.fn());
 const estimateDrinkingWindowMock = vi.hoisted(() => vi.fn());
 const isAIConfigurationErrorMock = vi.hoisted(() => vi.fn());
 const isAIRateLimitErrorMock = vi.hoisted(() => vi.fn());
+const consumeAIRateLimitMock = vi.hoisted(() => vi.fn());
+const applyRateLimitHeadersMock = vi.hoisted(() => vi.fn((response) => response));
+const monitorStartMock = vi.hoisted(() => vi.fn());
+const monitorSuccessMock = vi.hoisted(() => vi.fn());
+const monitorBadRequestMock = vi.hoisted(() => vi.fn());
+const monitorAuthFailureMock = vi.hoisted(() => vi.fn());
+const monitorRateLimitedMock = vi.hoisted(() => vi.fn());
+const monitorProviderRateLimitedMock = vi.hoisted(() => vi.fn());
+const monitorConfigurationErrorMock = vi.hoisted(() => vi.fn());
+const monitorUnavailableMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-auth", () => ({
   authenticateRequest: authMock,
+}));
+
+vi.mock("@/lib/ai-rate-limit", () => ({
+  consumeAIRateLimit: consumeAIRateLimitMock,
+  applyRateLimitHeaders: applyRateLimitHeadersMock,
 }));
 
 vi.mock("@/lib/ai-service", () => ({
@@ -21,6 +36,19 @@ vi.mock("@/lib/ai-service", () => ({
   estimateDrinkingWindow: estimateDrinkingWindowMock,
   isAIConfigurationError: isAIConfigurationErrorMock,
   isAIRateLimitError: isAIRateLimitErrorMock,
+}));
+
+vi.mock("@/lib/observability", () => ({
+  createAIRouteMonitor: () => ({
+    start: monitorStartMock,
+    success: monitorSuccessMock,
+    badRequest: monitorBadRequestMock,
+    authFailure: monitorAuthFailureMock,
+    rateLimited: monitorRateLimitedMock,
+    providerRateLimited: monitorProviderRateLimitedMock,
+    configurationError: monitorConfigurationErrorMock,
+    unavailable: monitorUnavailableMock,
+  }),
 }));
 
 function createJsonRequest(url: string, body: string | object) {
@@ -47,6 +75,15 @@ describe("AI API routes", () => {
     authMock.mockResolvedValue({ uid: "user-123" });
     isAIConfigurationErrorMock.mockReturnValue(false);
     isAIRateLimitErrorMock.mockReturnValue(false);
+    consumeAIRateLimitMock.mockResolvedValue({
+      allowed: true,
+      limit: 12,
+      remaining: 11,
+      resetAt: Date.now() + 60000,
+      retryAfterSeconds: 0,
+      windowMs: 60000,
+      store: "memory",
+    });
   });
 
   afterEach(() => {
@@ -92,6 +129,31 @@ describe("AI API routes", () => {
       expect(await readJson(response)).toEqual({
         error: "Message is required",
       });
+    });
+
+    it("returns 429 when the app-level chat rate limit is hit", async () => {
+      consumeAIRateLimitMock.mockResolvedValueOnce({
+        allowed: false,
+        limit: 12,
+        remaining: 0,
+        resetAt: Date.now() + 45000,
+        retryAfterSeconds: 45,
+        windowMs: 60000,
+        store: "memory",
+      });
+
+      const { POST } = await import("@/app/api/chat/route");
+      const response = await POST(
+        createJsonRequest("/api/chat", { message: "Hello" })
+      );
+
+      expect(response.status).toBe(429);
+      expect(await readJson(response)).toEqual({
+        error: "You've asked the sommelier a lot in a short burst. Please wait about 45 seconds and try again.",
+        retryAfterSeconds: 45,
+      });
+      expect(generateSommelierReplyMock).not.toHaveBeenCalled();
+      expect(monitorRateLimitedMock).toHaveBeenCalled();
     });
 
     it("returns the chat response and provider metadata", async () => {
@@ -239,6 +301,31 @@ describe("AI API routes", () => {
       });
     });
 
+    it("returns 429 when the app-level lookup rate limit is hit", async () => {
+      consumeAIRateLimitMock.mockResolvedValueOnce({
+        allowed: false,
+        limit: 20,
+        remaining: 0,
+        resetAt: Date.now() + 30_000,
+        retryAfterSeconds: 30,
+        windowMs: 60_000,
+        store: "memory",
+      });
+
+      const { POST } = await import("@/app/api/wine/lookup/route");
+      const response = await POST(
+        createJsonRequest("/api/wine/lookup", { query: "Barolo" })
+      );
+
+      expect(response.status).toBe(429);
+      expect(await readJson(response)).toEqual({
+        success: false,
+        error: "You've looked up a lot of wines in a short burst. Please wait about 30 seconds and try again.",
+        retryAfterSeconds: 30,
+      });
+      expect(lookupWineDetailsMock).not.toHaveBeenCalled();
+    });
+
     it("maps configuration, rate-limit and generic failures", async () => {
       const { POST } = await import("@/app/api/wine/lookup/route");
 
@@ -306,6 +393,30 @@ describe("AI API routes", () => {
         "image/jpeg",
         "user-123"
       );
+    });
+
+    it("returns 429 when the app-level label-analysis rate limit is hit", async () => {
+      consumeAIRateLimitMock.mockResolvedValueOnce({
+        allowed: false,
+        limit: 8,
+        remaining: 0,
+        resetAt: Date.now() + 90_000,
+        retryAfterSeconds: 90,
+        windowMs: 600_000,
+        store: "memory",
+      });
+
+      const { POST } = await import("@/app/api/analyze-wine/route");
+      const response = await POST(
+        createJsonRequest("/api/analyze-wine", { imageBase64: "abc123" })
+      );
+
+      expect(response.status).toBe(429);
+      expect(await readJson(response)).toEqual({
+        error: "You've scanned a lot of labels in a short burst. Please wait about 90 seconds and try again.",
+        retryAfterSeconds: 90,
+      });
+      expect(analyzeWineLabelImageMock).not.toHaveBeenCalled();
     });
 
     it("maps configuration, rate-limit and generic failures", async () => {
@@ -389,6 +500,35 @@ describe("AI API routes", () => {
         },
       });
       expect(estimateDrinkingWindowMock).toHaveBeenCalledWith(wine, "user-123");
+    });
+
+    it("returns 429 when the app-level drinking-window rate limit is hit", async () => {
+      consumeAIRateLimitMock.mockResolvedValueOnce({
+        allowed: false,
+        limit: 16,
+        remaining: 0,
+        resetAt: Date.now() + 120_000,
+        retryAfterSeconds: 120,
+        windowMs: 600_000,
+        store: "memory",
+      });
+
+      const { POST } = await import("@/app/api/drinking-window/route");
+      const response = await POST(
+        createJsonRequest("/api/drinking-window", {
+          wine: {
+            vintage: 2021,
+            grapeVariety: "Nebbiolo",
+          },
+        })
+      );
+
+      expect(response.status).toBe(429);
+      expect(await readJson(response)).toEqual({
+        error: "You've requested a lot of drinking-window estimates in a short burst. Please wait about 120 seconds and try again.",
+        retryAfterSeconds: 120,
+      });
+      expect(estimateDrinkingWindowMock).not.toHaveBeenCalled();
     });
 
     it("maps configuration, rate-limit and generic failures", async () => {

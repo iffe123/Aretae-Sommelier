@@ -12,6 +12,7 @@ import Image from "next/image";
 import { validateImageFile, getStorageErrorMessage, formatFileSize, MAX_FILE_SIZE } from "@/lib/error-utils";
 import { validateWineForm, WineFormErrors, LIMITS } from "@/lib/validation";
 import { useAuth } from "@/contexts/AuthContext";
+import { openFeedbackDraft } from "@/lib/feedback-client";
 
 interface WineLabelData {
   name: string | null;
@@ -376,6 +377,26 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     }
   };
 
+  const handleReportIssue = (
+    category: "wine-label-analysis" | "wine-lookup",
+    issue: string
+  ) => {
+    openFeedbackDraft({
+      title: "Wine import feedback",
+      page: "Add wine form",
+      category,
+      details: {
+        issue,
+        search_query: vivinoSearchQuery || [formData.winery, formData.name].filter(Boolean).join(" "),
+        wine_name: formData.name || undefined,
+        winery: formData.winery || undefined,
+        vintage: formData.vintage || undefined,
+        has_photo: Boolean(photoPreview),
+        has_vivino_match: Boolean(selectedVivinoWine),
+      },
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
@@ -505,9 +526,16 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         )}
         {/* Analysis error message */}
         {analysisError && !photoError && (
-          <p className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
-            {analysisError}
-          </p>
+          <div className="mt-2 rounded bg-amber-50 p-3 text-sm text-amber-700">
+            <p>{analysisError}</p>
+            <button
+              type="button"
+              onClick={() => handleReportIssue("wine-label-analysis", analysisError)}
+              className="mt-2 font-medium text-wine-700 underline-offset-2 hover:underline"
+            >
+              Report label-analysis issue
+            </button>
+          </div>
         )}
       </div>
 
@@ -537,9 +565,16 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
 
         {/* Vivino error */}
         {vivinoError && (
-          <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded mb-3">
-            {vivinoError}
-          </p>
+          <div className="mb-3 rounded bg-amber-50 p-3 text-sm text-amber-700">
+            <p>{vivinoError}</p>
+            <button
+              type="button"
+              onClick={() => handleReportIssue("wine-lookup", vivinoError)}
+              className="mt-2 font-medium text-wine-700 underline-offset-2 hover:underline"
+            >
+              Report lookup issue
+            </button>
+          </div>
         )}
 
         {/* Selected Vivino wine info */}

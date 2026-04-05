@@ -5,7 +5,7 @@ import { Wine } from "@/types/wine";
 import { chatWithSommelier, CellarData, CellarWineSummary } from "@/lib/gemini";
 import { getUserWines } from "@/lib/wine-service";
 import { useAuth } from "@/contexts/AuthContext";
-import { buildFeedbackMailto } from "@/lib/feedback";
+import { openFeedbackDraft } from "@/lib/feedback-client";
 import Button from "@/components/ui/Button";
 import { Send, Wine as WineIcon, Bot, User, X, Mail, Sparkles } from "lucide-react";
 
@@ -205,6 +205,10 @@ export default function SommelierChat({
       const userFacingMessage =
         errorText.includes("invalid or expired token")
           ? "Your session expired. Please sign out and sign in again."
+          : errorText.includes("rate limit") || errorText.includes("too many")
+            ? error instanceof Error
+              ? error.message
+              : "The sommelier is taking a quick breather. Please try again shortly."
           : errorText.includes("server auth configuration error")
             ? "Server auth is misconfigured (Firebase Admin key). Please verify Vercel environment variables."
             : "I apologize, but I'm having trouble connecting right now. Please try again in a moment.";
@@ -235,15 +239,18 @@ export default function SommelierChat({
   const latestAssistantMessage = [...messages].reverse().find((message) => message.role === "model");
 
   const handleSendFeedback = () => {
-    const href = buildFeedbackMailto({
+    openFeedbackDraft({
       title: wineContext ? `Sommelier feedback for ${wineContext.name}` : "Sommelier feedback",
       page: wineContext ? `Sommelier chat - ${wineContext.name}` : "Sommelier chat",
-      source: typeof window !== "undefined" ? window.location.href : "/cellar",
+      category: "sommelier",
       userMessage: latestUserMessage?.content,
       assistantMessage: latestAssistantMessage?.content,
+      details: {
+        has_wine_context: Boolean(wineContext),
+        cellar_wine_count: cellarData?.wines.length ?? 0,
+        message_count: messages.length,
+      },
     });
-
-    window.location.href = href;
   };
 
   if (!isVisible) return null;

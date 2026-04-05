@@ -13,7 +13,7 @@ A mobile-first wine cellar app with AI sommelier chat — an hommage to Pär Per
 - **Edit and delete** wines easily
 
 ### AI Sommelier Chat
-- Chat interface powered by Google Gemini AI
+- Chat interface powered by a Gateway-first AI stack
 - Get **food pairing suggestions**, serving temperature, and decanting advice
 - Receive **similar wine recommendations**
 - **Context-aware**: when viewing a specific wine, the sommelier knows which wine you're asking about
@@ -31,7 +31,8 @@ A mobile-first wine cellar app with AI sommelier chat — an hommage to Pär Per
 - **Firebase Authentication** (email/password + Google sign-in)
 - **Firebase Firestore** for the database
 - **Firebase Storage** for wine label photos
-- **Google Gemini AI** for sommelier chat
+- **Vercel AI Gateway** for model routing and fallback
+- **Google Gemini** as the direct-provider fallback
 - **PWA** configuration with next-pwa
 
 ## Getting Started
@@ -41,7 +42,7 @@ A mobile-first wine cellar app with AI sommelier chat — an hommage to Pär Per
 - Node.js 18+
 - npm or yarn
 - Firebase project
-- Google AI Studio API key (for Gemini)
+- Either Vercel AI Gateway auth or a Google AI Studio API key
 
 ### Installation
 
@@ -83,8 +84,20 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
-# Gemini AI Configuration (server-side only for security)
+# AI Configuration
+# Recommended: use Vercel AI Gateway auth (local dev token via `vercel env pull`)
+VERCEL_OIDC_TOKEN=your_vercel_oidc_token_here
+
+# Optional: static AI Gateway API key if you are not using OIDC
+AI_GATEWAY_API_KEY=your_ai_gateway_api_key_here
+
+# Direct Google fallback (recommended even when Gateway is enabled)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional model overrides
+AI_PRIMARY_MODEL=openai/gpt-5.4-mini
+AI_VISION_MODEL=openai/gpt-5.4-mini
+AI_FALLBACK_MODELS=anthropic/claude-sonnet-4.6,google/gemini-2.5-flash
 ```
 
 #### Validation and error messages
@@ -135,11 +148,18 @@ API routes will respond with a consistent error payload:
      - `createdAt` (Descending)
    - Query scope: Collection
 
-### Gemini API Setup
+### AI Setup
 
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Add it to your `.env.local` as `GEMINI_API_KEY` (without `NEXT_PUBLIC_` prefix for security - API keys should never be exposed client-side)
+1. Link the project to Vercel:
+   ```bash
+   npx vercel link
+   ```
+2. Pull local development env vars, including the OIDC token used by the AI Gateway:
+   ```bash
+   npx vercel env pull .env.local
+   ```
+3. Add a Google fallback key in Vercel or `.env.local` as `GEMINI_API_KEY`
+4. Optional: override models with `AI_PRIMARY_MODEL`, `AI_VISION_MODEL`, or `AI_FALLBACK_MODELS`
 
 ## Deployment
 
@@ -148,7 +168,10 @@ API routes will respond with a consistent error payload:
 1. Push your code to GitHub
 2. Import the project in [Vercel](https://vercel.com)
 3. Add your environment variables in the Vercel dashboard
-4. Deploy!
+4. Recommended:
+   - enable AI Gateway for the project
+   - keep `GEMINI_API_KEY` configured as the direct fallback
+5. Deploy!
 
 ### Firebase Security Rules
 

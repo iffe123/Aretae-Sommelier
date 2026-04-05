@@ -1,70 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ENV_PUBLIC_ERROR_MESSAGE, getServerEnv } from "@/lib/env";
+import { ENV_PUBLIC_ERROR_MESSAGE } from "@/lib/env";
 import { authenticateRequest } from "@/lib/api-auth";
-
-const WINE_LABEL_PROMPT = `You are an expert sommelier and wine label analyst. Analyze this wine bottle label image and extract comprehensive information.
-
-Return ONLY a valid JSON object with these fields (use null for any field you cannot determine):
-{
-  "name": "wine name (cuvée name if applicable)",
-  "winery": "producer/winery/château/domaine name",
-  "vintage": year as number or null,
-  "grapeVariety": "grape variety or blend (e.g., 'Cabernet Sauvignon', 'Grenache, Syrah, Mourvèdre')",
-  "region": "wine region (e.g., 'Napa Valley', 'Côtes du Rhône', 'Barossa Valley')",
-  "country": "country of origin",
-  "wineType": "red" | "white" | "rosé" | "sparkling" | "dessert" | "fortified" | "orange" or null,
-  "classification": "quality classification if visible (e.g., 'Grand Cru', 'Reserva', 'Premier Cru', 'DOC', 'DOCG')" or null,
-  "alcoholContent": alcohol percentage as number (e.g., 13.5) or null,
-  "drinkingWindowStart": suggested year to start drinking (based on vintage and wine style) or null,
-  "drinkingWindowEnd": suggested year by which to drink (based on aging potential) or null
-}
-
-Important guidelines:
-- Return ONLY the JSON object, no other text or markdown
-- The vintage must be a 4-digit year number, not a string
-- For wineType, infer from:
-  - Label color/design cues
-  - Grape varieties (e.g., Chardonnay → white, Pinot Noir → typically red)
-  - Region conventions (e.g., Champagne → sparkling, Sauternes → dessert)
-  - Terms like "Brut", "Rosé", "Blanc", "Rouge", "Tinto", "Bianco"
-- For drinkingWindow, estimate based on:
-  - Wine type (whites typically drink younger than reds)
-  - Quality level (Grand Cru ages longer)
-  - Region (Bordeaux ages longer than Beaujolais)
-  - Grape variety (Nebbiolo ages longer than Gamay)
-- Be precise with wine terminology and regional naming conventions
-- If the label shows multiple potential names, prefer the cuvée/wine name over the winery name`;
-
-interface WineLabelData {
-  name: string | null;
-  winery: string | null;
-  vintage: number | null;
-  grapeVariety: string | null;
-  region: string | null;
-  country: string | null;
-  wineType: "red" | "white" | "rosé" | "sparkling" | "dessert" | "fortified" | "orange" | null;
-  classification: string | null;
-  alcoholContent: number | null;
-  drinkingWindowStart: number | null;
-  drinkingWindowEnd: number | null;
-}
+import {
+  analyzeWineLabelImage,
+  isAIConfigurationError,
+  isAIRateLimitError,
+} from "@/lib/ai-service";
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
     if (auth instanceof NextResponse) return auth;
-
-    let apiKey: string;
-    try {
-      apiKey = getServerEnv().GEMINI_API_KEY;
-    } catch (error) {
-      console.error(error);
-      return NextResponse.json(
-        { error: ENV_PUBLIC_ERROR_MESSAGE },
-        { status: 500 }
-      );
-    }
 
     let requestBody;
     try {
@@ -85,79 +31,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const base64Data = imageBase64.includes(',')
-      ? imageBase64.split(',')[1]
-      : imageBase64;
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: mimeType || "image/jpeg",
-          data: base64Data,
-        },
-      },
-      { text: WINE_LABEL_PROMPT },
-    ]);
-
-    const response = await result.response;
-    const text = response.text();
-
-    let wineData: WineLabelData;
-    try {
-      let jsonString = text;
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[1].trim();
-      }
-      const objectMatch = jsonString.match(/\{[\s\S]*\}/);
-      if (objectMatch) {
-        jsonString = objectMatch[0];
-      }
-      wineData = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error("Failed to parse Gemini response as JSON:", text, parseError);
-      return NextResponse.json(
-        { error: "Could not parse wine label data. Please fill in details manually.", rawResponse: text },
-        { status: 422 }
-      );
-    }
+    const result = await analyzeWineLabelImage(
+      imageBase64,
+      mimeType || "image/jpeg",
+      auth.uid
+    );
 
     return NextResponse.json({
       success: true,
-      data: wineData
+      data: result.data,
+      meta: {
+        provider: result.provider,
+      },
     });
   } catch (error: unknown) {
     console.error("Wine analysis API error:", error);
 
-    const errorObj = error as { message?: string; status?: number; statusText?: string };
-
-    if (errorObj.message?.includes('API key')) {
+    if (isAIConfigurationError(error)) {
       return NextResponse.json(
-        { error: "Invalid Gemini API key. Please check your GEMINI_API_KEY configuration." },
-        { status: 401 }
+        { error: ENV_PUBLIC_ERROR_MESSAGE },
+        { status: 500 }
       );
     }
 
-    if (errorObj.message?.includes('quota') || errorObj.message?.includes('rate')) {
+    if (isAIRateLimitError(error)) {
       return NextResponse.json(
-        { error: "API rate limit exceeded. Please try again later." },
+        { error: "AI rate limit exceeded. Please try again later." },
         { status: 429 }
-      );
-    }
-
-    if (errorObj.message?.includes('model') || errorObj.message?.includes('not found')) {
-      return NextResponse.json(
-        { error: "AI model unavailable. Please try again later." },
-        { status: 503 }
       );
     }
 
     return NextResponse.json(
       { error: "Failed to analyze wine label. Please fill in details manually." },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

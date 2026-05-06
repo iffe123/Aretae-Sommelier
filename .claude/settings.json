@@ -1,0 +1,45 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/parse-input.js\" command); echo \"$CMD\" | grep -qE 'rm -rf|DROP TABLE|sudo rm' && { echo 'Blocked dangerous command' >&2; exit 2; } || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FP=$(node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/parse-input.js\" file_path); [ -z \"$FP\" ] && exit 0; BN=$(basename \"$FP\"); case \"$BN\" in .env|.env.*) [ \"$BN\" = \".env.example\" ] || { echo \"Blocked write to env file: $FP\" >&2; exit 2; };; esac; case \"$FP\" in *serviceAccount*.json|*-credentials*.json) echo \"Blocked write to credentials file: $FP\" >&2; exit 2;; esac; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FP=$(node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/parse-input.js\" file_path); echo \"$FP\" | grep -qE '\\.(ts|tsx|js|jsx|mjs|cjs)$' && npx --no-install eslint --fix \"$FP\" >/dev/null 2>&1; exit 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p ~/.claude 2>/dev/null; echo \"$(date '+%Y-%m-%d %H:%M:%S') session ended in $(pwd)\" >> ~/.claude/aretae-sessions.log 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

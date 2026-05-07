@@ -43,6 +43,13 @@ export interface VivinoError {
   code: "RATE_LIMITED" | "NOT_FOUND" | "API_ERROR" | "NETWORK_ERROR" | "PARSE_ERROR" | "SERVICE_UNAVAILABLE";
 }
 
+interface VivinoFetchResponse {
+  ok: boolean;
+  status?: number;
+  data?: Record<string, unknown>;
+  error?: VivinoError;
+}
+
 // Headers required to access Vivino API
 const VIVINO_HEADERS = {
   "User-Agent":
@@ -247,45 +254,31 @@ export async function searchWines(
 
   try {
     const encodedQuery = encodeURIComponent(query);
-    // Use the search endpoint for text-based search (not explore which is for browsing)
-    const url = `${VIVINO_API_BASE}/search/search?q=${encodedQuery}&limit=${limit}`;
-
     console.log(`[Vivino] Searching for: "${query}"`);
+    const searchEndpoints = [
+      `${VIVINO_API_BASE}/search/search?q=${encodedQuery}&limit=${limit}`,
+      `${VIVINO_API_BASE}/explore/explore?type=wines&q=${encodedQuery}&limit=${limit}`,
+    ];
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: VIVINO_HEADERS,
-    });
+    let wines: VivinoWine[] = [];
+    let lastError: VivinoError | undefined;
 
-    if (response.status === 429) {
-      console.warn("[Vivino] Rate limited");
-      return { message: "Rate limited by Vivino. Please try again later.", code: "RATE_LIMITED" };
-    }
-
-    // Handle 404 - the search endpoint may have been deprecated
-    if (response.status === 404) {
-      console.warn("[Vivino] Search endpoint returned 404 - service may be unavailable");
-      markServiceUnavailable();
-      return {
-        message: "Vivino lookup is temporarily unavailable. You can still add wines manually.",
-        code: "SERVICE_UNAVAILABLE",
-      };
-    }
-
-    if (!response.ok) {
-      console.error(`[Vivino] API error: ${response.status} ${response.statusText}`);
-      // If we get repeated API errors, mark service as unavailable
-      if (response.status >= 500) {
-        markServiceUnavailable();
+    for (const endpoint of searchEndpoints) {
+      const response = await fetchVivinoJson(endpoint);
+      if (!response.ok) {
+        lastError = response.error;
+        continue;
       }
-      return {
-        message: `Vivino API returned ${response.status}`,
-        code: "API_ERROR",
-      };
+
+      wines = parseSearchResponse(response.data || {});
+      if (wines.length > 0) {
+        break;
+      }
     }
 
-    const data = await response.json();
-    const wines = parseSearchResponse(data);
+    if (wines.length === 0 && lastError) {
+      return lastError;
+    }
 
     const result: VivinoSearchResult = {
       wines: wines.slice(0, limit),
@@ -299,6 +292,65 @@ export async function searchWines(
     return {
       message: error instanceof Error ? error.message : "Network error",
       code: "NETWORK_ERROR",
+    };
+  }
+}
+
+async function fetchVivinoJson(url: string): Promise<VivinoFetchResponse> {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: VIVINO_HEADERS,
+    });
+
+    if (response.status === 429) {
+      return {
+        ok: false,
+        status: response.status,
+        error: { message: "Rate limited by Vivino. Please try again later.", code: "RATE_LIMITED" },
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        ok: false,
+        status: response.status,
+        error: { message: "No matches found on Vivino.", code: "NOT_FOUND" },
+      };
+    }
+
+    if (!response.ok) {
+      if (response.status >= 500) {
+        markServiceUnavailable();
+      }
+      return {
+        ok: false,
+        status: response.status,
+        error: {
+          message: `Vivino API returned ${response.status}`,
+          code: response.status >= 500 ? "SERVICE_UNAVAILABLE" : "API_ERROR",
+        },
+      };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return {
+        ok: false,
+        status: response.status,
+        error: { message: "Vivino lookup is temporarily unavailable.", code: "SERVICE_UNAVAILABLE" },
+      };
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    return { ok: true, status: response.status, data };
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        message: error instanceof Error ? error.message : "Network error",
+        code: "NETWORK_ERROR",
+      },
     };
   }
 }

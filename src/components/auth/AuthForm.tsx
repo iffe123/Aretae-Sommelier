@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Wine, Loader2 } from "lucide-react";
 import { getAuthErrorMessage } from "@/lib/error-utils";
+import { getPasswordStrength, validatePassword } from "@/lib/validation";
 
 // Development-only logging helper
 const debugLog = (...args: unknown[]) => {
@@ -32,6 +33,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const { user, loading: authLoading, checkingRedirect, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const router = useRouter();
 
+  const passwordValidation = validatePassword(password);
+  const passwordStrength = getPasswordStrength(password);
+
+
   // Check for authenticated user after OAuth redirect and redirect to cellar
   // Wait for BOTH auth loading AND redirect check to complete
   useEffect(() => {
@@ -53,6 +58,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     try {
       if (mode === "signup") {
+        if (!passwordValidation.valid) {
+          setError(passwordValidation.error || "Please choose a stronger password.");
+          setLoading(false);
+          return;
+        }
         await signUp(normalizedEmail, password, normalizedDisplayName);
       } else {
         await signIn(normalizedEmail, password);
@@ -235,6 +245,25 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   required
                   minLength={8}
                 />
+
+                {mode === "signup" && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-gray-600">
+                      Use at least 8 characters. Stronger passwords include uppercase letters, numbers, and symbols.
+                    </p>
+                    {password.length > 0 && (
+                      <p
+                        className={`text-xs ${passwordValidation.valid ? "text-green-700" : "text-red-600"}`}
+                      >
+                        {passwordValidation.valid
+                          ? `Password strength: ${passwordStrength.strength}`
+                          : passwordValidation.error}
+                        {passwordStrength.feedback ? ` (${passwordStrength.feedback})` : ""}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {mode === "signin" && (
                   <button
                     type="button"

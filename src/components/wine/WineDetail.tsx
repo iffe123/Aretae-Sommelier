@@ -237,11 +237,11 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
             </div>
           )}
 
-          {/* Vivino Data */}
+          {/* Market / style data */}
           {(wine.vivinoRating || wine.body || wine.acidity || (wine.foodPairings && wine.foodPairings.length > 0)) && (
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-gray-900">From Vivino</h2>
+                <h2 className="font-semibold text-gray-900">Wine profile</h2>
                 {wine.vivinoUrl && (
                   <a
                     href={wine.vivinoUrl}
@@ -250,7 +250,7 @@ export default function WineDetail({ wine, onEdit }: WineDetailProps) {
                     className="inline-flex items-center gap-1 text-sm text-wine-600 hover:text-wine-700"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    View on Vivino
+                    View source
                   </a>
                 )}
               </div>

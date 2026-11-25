@@ -38,6 +38,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,6 +163,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
   };
 
+  // Permanently deletes the account server-side (wines, photos, auth user), then signs out locally.
+  const deleteAccount = async () => {
+    if (!auth || !auth.currentUser) throw new Error("You need to be signed in to delete your account.");
+    const idToken = await auth.currentUser.getIdToken(true);
+    const response = await fetch("/api/account", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ confirm: "DELETE" }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "We couldn't delete your account. Please try again.");
+    }
+    await firebaseSignOut(auth).catch(() => undefined);
+  };
+
   const resetPassword = async (email: string) => {
     if (!auth) throw new Error("Firebase auth not initialized");
     // Note: Firebase will send email even if account doesn't exist (security best practice)
@@ -171,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, checkingRedirect, firebaseConfigured: isFirebaseAvailable(), signIn, signUp, signInWithGoogle, signOut, resetPassword }}
+      value={{ user, loading, checkingRedirect, firebaseConfigured: isFirebaseAvailable(), signIn, signUp, signInWithGoogle, signOut, resetPassword, deleteAccount }}
     >
       {children}
     </AuthContext.Provider>

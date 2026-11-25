@@ -9,6 +9,7 @@ import WineList from "@/components/wine/WineList";
 import WineFilters from "@/components/wine/WineFilters";
 import WineForm from "@/components/wine/WineForm";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import SommelierChat from "@/components/chat/SommelierChat";
 import { ToastContainer, useToast } from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
@@ -29,11 +30,14 @@ import {
   Sparkles,
   Mail,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function CellarPage() {
-  const { user, loading: authLoading, checkingRedirect, signOut } = useAuth();
+  const { user, loading: authLoading, checkingRedirect, signOut, deleteAccount } = useAuth();
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const router = useRouter();
   const { toasts, removeToast, showError, showSuccess } = useToast();
 
@@ -307,6 +311,16 @@ export default function CellarPage() {
                     <LogOut className="w-4 h-4" />
                     Sign Out
                   </button>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowDeleteAccount(true);
+                    }}
+                    className="flex w-full items-center gap-2 border-t p-3 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete account
+                  </button>
                 </div>
                 )}
               </div>
@@ -450,6 +464,28 @@ export default function CellarPage() {
       <SommelierChat isOpen={showChat} onClose={() => setShowChat(false)} />
 
       {/* Toast Notifications */}
+      <ConfirmDialog
+        isOpen={showDeleteAccount}
+        onClose={() => {
+          if (!deletingAccount) setShowDeleteAccount(false);
+        }}
+        onConfirm={async () => {
+          setDeletingAccount(true);
+          try {
+            await deleteAccount();
+            router.push("/");
+          } catch (error) {
+            showError(error instanceof Error ? error.message : "We couldn't delete your account. Please try again.");
+            setDeletingAccount(false);
+            setShowDeleteAccount(false);
+          }
+        }}
+        title="Delete your account?"
+        message="This permanently deletes your account, every wine in your cellar and all label photos. This cannot be undone."
+        confirmText="Delete account"
+        variant="danger"
+        isLoading={deletingAccount}
+      />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

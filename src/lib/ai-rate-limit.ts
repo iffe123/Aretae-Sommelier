@@ -29,7 +29,7 @@ interface FirestoreRateLimitRecord extends AIRateLimitRecord {
   expiresAt: Date;
 }
 
-const RATE_LIMIT_COLLECTION = "aiRateLimits";
+export const RATE_LIMIT_COLLECTION = "aiRateLimits";
 const MEMORY_STORE_PRUNE_THRESHOLD = 500;
 
 export const AI_RATE_LIMIT_POLICIES: Record<AIEndpoint, AIRateLimitPolicy> = {
@@ -57,7 +57,7 @@ function getPolicy(endpoint: AIEndpoint): AIRateLimitPolicy {
   return AI_RATE_LIMIT_POLICIES[endpoint];
 }
 
-function createRateLimitDocId(endpoint: AIEndpoint, userId: string): string {
+export function createRateLimitDocId(endpoint: AIEndpoint, userId: string): string {
   return Buffer.from(`${endpoint}:${userId}`).toString("base64url");
 }
 

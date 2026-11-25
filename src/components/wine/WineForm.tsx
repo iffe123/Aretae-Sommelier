@@ -28,7 +28,7 @@ interface WineLabelData {
   drinkingWindowEnd: number | null;
 }
 
-// Vivino wine data structure (matches lib/vivino.ts)
+// Lookup result shape (fields named after the legacy Vivino integration; stored data keeps these names)
 interface VivinoWine {
   id: string;
   name: string;
@@ -111,7 +111,8 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     foodPairings: initialData?.foodPairings || [],
   });
 
-  // Search for wine data (tries Vivino first, then AI-powered lookup as fallback)
+  // Search for wine data via the server-side AI lookup (/api/wine/lookup).
+  // Internal names still say "vivino" because stored Firestore fields keep that name.
   const searchVivino = async (query: string, vintage?: string) => {
     if (!query.trim()) return;
 
@@ -121,56 +122,13 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
     setSelectedVivinoWine(null);
 
     try {
-      // Try Vivino first
-      const idToken = user ? await user.getIdToken() : "";
-      const response = await fetch("/api/wine/vivino", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          action: "search",
-          query: query.trim(),
-          vintage,
-          limit: 5,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        const wines = data.data?.wines || [];
-        setVivinoResults(wines);
-
-        // If exactly one result, auto-select it
-        if (wines.length === 1) {
-          applyVivinoWine(wines[0]);
-        }
-        return;
-      }
-
-      // Vivino failed - try AI-powered lookup as fallback
-      if (response.status === 503 || data.code === "SERVICE_UNAVAILABLE" || response.status === 404) {
-        console.log("[WineForm] Vivino unavailable, trying AI lookup...");
-        await searchWithAI(query, vintage);
-        return;
-      }
-
-      // Other errors - try AI fallback
-      console.warn("[WineForm] Vivino error, trying AI lookup...", data.error);
-      await searchWithAI(query, vintage);
-
-    } catch (error) {
-      console.error("Wine search error:", error);
-      // Try AI fallback on network errors too
       await searchWithAI(query, vintage);
     } finally {
       setVivinoSearching(false);
     }
   };
 
-  // AI-powered wine lookup (fallback when Vivino is unavailable)
+  // AI-powered wine lookup
   const searchWithAI = async (query: string, vintage?: string) => {
     try {
       const idToken = user ? await user.getIdToken() : "";
@@ -317,7 +275,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         drinkingWindowEnd: wineData.drinkingWindowEnd || prev.drinkingWindowEnd,
       }));
 
-      // After Gemini analysis, search Vivino for additional details
+      // After label analysis, look up for additional details
       const wineName = wineData.name || wineData.winery;
       if (wineName) {
         const searchQuery = [wineData.winery, wineData.name].filter(Boolean).join(" ");
@@ -422,9 +380,9 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         alcoholContent: 'Alcohol %',
         drinkingWindowStart: 'Drink From',
         drinkingWindowEnd: 'Drink Until',
-        vivinoRating: 'Vivino Rating',
+        vivinoRating: 'Market rating',
         vivinoRatingsCount: 'Ratings Count',
-        vivinoUrl: 'Vivino URL',
+        vivinoUrl: 'Wine URL',
         body: 'Body',
         acidity: 'Acidity',
         foodPairings: 'Food Pairings',
@@ -544,14 +502,14 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <WineIcon className="w-5 h-5 text-wine-600" />
-            <span className="text-sm font-medium text-gray-700">Vivino Lookup</span>
+            <span className="text-sm font-medium text-gray-700">Wine lookup</span>
           </div>
           <button
             type="button"
             onClick={() => setShowVivinoSearch(!showVivinoSearch)}
             className="text-sm text-wine-600 hover:text-wine-700 font-medium"
           >
-            {showVivinoSearch ? "Hide" : "Search Vivino"}
+            {showVivinoSearch ? "Hide" : "Search"}
           </button>
         </div>
 
@@ -559,7 +517,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         {vivinoSearching && (
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Searching Vivino...</span>
+            <span>Searching...</span>
           </div>
         )}
 
@@ -611,7 +569,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                   className="inline-flex items-center gap-1 text-xs text-wine-600 hover:text-wine-700 mt-1"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  View on Vivino
+                  View source
                 </a>
               )}
             </div>
@@ -969,7 +927,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
         <div className="border border-wine-200 rounded-lg p-4 bg-wine-50/50 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <WineIcon className="w-4 h-4 text-wine-600" />
-            <span className="text-sm font-medium text-wine-700">From Vivino</span>
+            <span className="text-sm font-medium text-wine-700">Wine profile</span>
             {formData.vivinoUrl && (
               <a
                 href={formData.vivinoUrl}
@@ -978,7 +936,7 @@ export default function WineForm({ initialData, onSubmit, onCancel }: WineFormPr
                 className="ml-auto inline-flex items-center gap-1 text-xs text-wine-600 hover:text-wine-700"
               >
                 <ExternalLink className="w-3 h-3" />
-                View on Vivino
+                View source
               </a>
             )}
           </div>

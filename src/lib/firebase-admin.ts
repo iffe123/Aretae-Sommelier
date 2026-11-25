@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { getAuth, type Auth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { isPlaceholderValue } from "@/lib/env";
 
@@ -132,4 +133,23 @@ export function getAdminFirestore(): Firestore | null {
 
   const app = getAdminApp();
   return getFirestore(app);
+}
+
+/** Admin Auth, or null when no service account is configured (REST fallback cannot manage users). */
+export function getAdminAuth(): Auth | null {
+  if (!getServiceAccountKey()) {
+    return null;
+  }
+
+  return getAuth(getAdminApp());
+}
+
+/** Admin Storage bucket for wine photos, or null when credentials or bucket name are missing. */
+export function getAdminStorageBucket(): ReturnType<ReturnType<typeof getStorage>["bucket"]> | null {
+  const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (!getServiceAccountKey() || !bucketName || isPlaceholderValue(bucketName)) {
+    return null;
+  }
+
+  return getStorage(getAdminApp()).bucket(bucketName);
 }

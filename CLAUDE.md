@@ -27,7 +27,7 @@ This file is loaded into every Claude Code session at the repo root. Treat it as
 | Type definitions | `src/types/wine.ts` | Wine, WineType enum, CellarWineSummary |
 | Firestore + Storage rules | `firebase.rules.md` | Default-deny; user-scoped read/write |
 | AI routes | `src/app/api/chat/`, `src/app/api/analyze-wine/`, `src/app/api/drinking-window/`, `src/app/api/wine/lookup/` | |
-| Other routes | `src/app/api/wine/vivino/` | |
+| Account deletion | `src/lib/account-deletion.ts`, `src/app/api/account/` | App Store 5.1.1(v); deletes wines, photos, rate-limit docs, then Auth user |
 | Pages | `src/app/cellar/`, `src/app/cellar/[id]/`, `src/app/signin/`, `src/app/signup/`, `src/app/stats/`, `src/app/share-menu/` | |
 
 ## Security rules (non-negotiable)
